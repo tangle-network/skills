@@ -1,0 +1,8 @@
+{
+  "name": "tangle-blueprint-expert",
+  "description": "Expert skill for designing, implementing, testing, and documenting Tangle Network Blueprints with correct hierarchy, tenancy/auth modeling, and production-like CLI validation",
+  "author": {
+    "name": "Tangle Network",
+    "email": "hello@tangle.tools"
+  }
+}
