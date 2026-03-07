@@ -1,0 +1,8 @@
+{
+  "name": "blueprint-frontend",
+  "description": "Build React frontends for Tangle Blueprints — job submission, operator discovery, service provisioning, session auth, agent chat/terminal, using @tangle-network/blueprint-ui and @tangle-network/agent-ui",
+  "author": {
+    "name": "Tangle Network",
+    "email": "hello@tangle.tools"
+  }
+}
