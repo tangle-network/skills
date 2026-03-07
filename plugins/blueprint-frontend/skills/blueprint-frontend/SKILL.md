@@ -1,11 +1,13 @@
 ---
 name: blueprint-frontend
-description: Use when building frontend applications for Tangle Blueprints — job submission, operator discovery, service provisioning, session auth, agent chat/terminal UX, or integrating @tangle-network/blueprint-ui and @tangle-network/agent-ui.
+description: Use when building frontend applications for Tangle Blueprints — job submission, operator discovery, service provisioning, session auth, or integrating @tangle-network/blueprint-ui.
 ---
 
 # Blueprint Frontend
 
-Use this skill when building React frontends for Tangle Network blueprints. Covers the shared UI libraries (`@tangle-network/blueprint-ui`, `@tangle-network/agent-ui`), on-chain interaction patterns, session auth, and product-level integration.
+Use this skill when building React frontends for Tangle Network blueprints. Covers the shared UI library (`@tangle-network/blueprint-ui`), on-chain interaction patterns, session auth, and Web3 provider setup.
+
+For sandbox-specific frontend patterns (agent chat, terminal, sidecar auth), see `sandbox-blueprint`.
 
 ## What This Skill Covers
 
@@ -13,43 +15,21 @@ Use this skill when building React frontends for Tangle Network blueprints. Cove
 - On-chain job submission, operator discovery, and RFQ pricing
 - Service validation and provision progress tracking
 - Session auth (EIP-191 challenge + PASETO tokens)
-- Agent chat and terminal UX via agent-ui
-- Dual-mode API clients (direct sidecar vs proxied operator)
 - Web3 provider setup (wagmi, viem, ConnectKit)
 - Theme and styling with blueprint-ui presets
+- Form components and job execution dialogs
+- Chain configuration and network switching
 
-## UI Layer Architecture
-
-Three layers with strict boundaries:
-
-### Layer 1: `@tangle-network/blueprint-ui` (shared library)
+## `@tangle-network/blueprint-ui`
 
 Chain/contract interaction, job forms, stores, layout primitives. App-agnostic — no product-specific routing or copy.
 
-Source: `~/code/blueprint-ui/`
+Source: [tangle-network/blueprint-ui](https://github.com/tangle-network/blueprint-ui)
 
 Three export entry points:
 - `@tangle-network/blueprint-ui` — hooks, stores, contracts, utilities
 - `@tangle-network/blueprint-ui/components` — UI components
 - `@tangle-network/blueprint-ui/preset` — UnoCSS theme tokens
-
-### Layer 2: `@tangle-network/agent-ui` (agent runtime UX)
-
-Chat, terminal, session streaming. No chain/contract logic — that belongs in blueprint-ui.
-
-Source: `~/code/ai-agent-sandbox-blueprint/packages/agent-ui/`
-
-Entry points:
-- `@tangle-network/agent-ui` — components, hooks, types
-- `@tangle-network/agent-ui/primitives` — small helpers
-- `@tangle-network/agent-ui/terminal` — lazy xterm.js terminal
-- `@tangle-network/agent-ui/styles` — stylesheet
-
-### Layer 3: App-level UI (product-specific)
-
-Blueprint definitions, API clients, deploy state machines, product routing. Lives in each blueprint's `ui/` directory.
-
-**Rule**: If Sandbox and another app share 20+ lines of agent-facing code, extract to agent-ui. If they share chain/contract logic, extract to blueprint-ui. Keep product-specific glue in the app.
 
 ## Blueprint Registration
 
@@ -272,8 +252,6 @@ const { phase, progressPct, sandboxId, sidecarUrl, isReady, isFailed, message } 
 
 ## Session Auth (EIP-191 + PASETO)
 
-### Blueprint-UI Level
-
 ```typescript
 import { useSessionAuth, useAuthenticatedFetch } from '@tangle-network/blueprint-ui';
 
@@ -285,68 +263,6 @@ const { authFetch } = useAuthenticatedFetch(sandboxId, operatorUrl);
 const res = await authFetch('/api/instances');
 // Auto-injects Bearer token, re-authenticates on 401
 ```
-
-### Agent-UI Level
-
-```typescript
-import { useSidecarAuth, useWagmiSidecarAuth } from '@tangle-network/agent-ui';
-
-// Generic (any signing method):
-const { token, isAuthenticated, authenticate } = useSidecarAuth(sidecarUrl, signMessage);
-
-// Wagmi adapter:
-const auth = useWagmiSidecarAuth(sidecarUrl);
-```
-
-## Agent Chat & Terminal
-
-### Chat
-
-```typescript
-import { ChatContainer, useSessionStream } from '@tangle-network/agent-ui';
-
-const { messages, partMap, isStreaming, send, abort } = useSessionStream({
-  sidecarUrl,
-  sessionId,
-  token,
-});
-
-<ChatContainer
-  messages={messages}
-  partMap={partMap}
-  isStreaming={isStreaming}
-  onSend={send}
-  branding={{ name: 'My Agent', icon: '...' }}
-/>
-```
-
-### Terminal
-
-```typescript
-import { TerminalView } from '@tangle-network/agent-ui/terminal';
-import { usePtySession } from '@tangle-network/agent-ui';
-
-const pty = usePtySession(sidecarUrl, token);
-
-<TerminalView session={pty} />
-// Lazy-loads xterm.js (~333KB)
-```
-
-## Dual-Mode API Client
-
-Apps should support both direct sidecar access (local dev) and proxied operator API (production):
-
-```typescript
-// Direct mode (local testing):
-const client = createDirectClient('http://localhost:32768', authToken);
-await client.prompt('hello');  // POST /agent/prompt
-
-// Proxied mode (production, through operator):
-const client = createProxiedClient('sandbox-id', pasetoToken, 'http://operator:9090');
-await client.prompt('hello');  // POST /api/sandboxes/sandbox-id/prompt
-```
-
-Pattern from ai-agent-sandbox-blueprint (`ui/src/lib/api/sandboxClient.ts`).
 
 ## Stores
 
@@ -478,23 +394,6 @@ export default defineConfig({
 // border-bp-elements-borderColor
 ```
 
-## Embedded UI Pattern
-
-For blueprints that serve UI from the operator binary (Rust):
-
-```rust
-// In operator_api.rs:
-use include_dir::{include_dir, Dir};
-
-static CONTROL_PLANE_UI_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/../control-plane-ui");
-
-// Serve at root:
-// GET / → index.html
-// GET /app.js, /styles.css, /assets/* → static files
-```
-
-Build: `cd ui && pnpm run build:embedded` compiles React app into `control-plane-ui/` directory, which gets embedded at `cargo build` time.
-
 ## Environment Variables
 
 | Variable | Purpose |
@@ -524,7 +423,6 @@ Jobs mutate state. Everything else goes through the operator API.
 
 ## Critical Files
 
-### blueprint-ui
 - `src/index.ts` — main exports (hooks, stores, contracts, utils)
 - `src/components.ts` — component exports
 - `src/preset.ts` — UnoCSS theme tokens
@@ -545,27 +443,12 @@ Jobs mutate state. Everything else goes through the operator API.
 - `src/components/forms/BlueprintJobForm.tsx` — job form renderer
 - `src/components/forms/JobExecutionDialog.tsx` — complete submission dialog
 
-### agent-ui
-- `src/index.ts` — public API
-- `src/hooks/useSidecarAuth.ts` — EIP-191 + PASETO auth
-- `src/hooks/useSessionStream.ts` — SSE message streaming
-- `src/hooks/usePtySession.ts` — PTY terminal
-- `src/components/chat/ChatContainer.tsx` — full chat UI
-
-### Reference app implementations
-- `~/code/ai-agent-sandbox-blueprint/ui/src/lib/blueprints/sandbox-blueprint.ts` — blueprint definition example
-- `~/code/ai-agent-sandbox-blueprint/ui/src/lib/api/sandboxClient.ts` — dual-mode API client
-- `~/code/ai-agent-sandbox-blueprint/ui/src/lib/hooks/useCreateDeploy.ts` — deploy state machine
-- `~/code/openclaw-sandbox-blueprint/ui/src/App.tsx` — embedded UI with tab-based instance management
-
 ## Rules
 
 1. **Jobs are mutations only.** Reads and operational I/O use `eth_call` and operator HTTP API.
 2. **blueprint-ui is app-agnostic.** No product-specific routing, copy, or feature orchestration.
-3. **agent-ui is for agent runtime UX only.** No chain/contract logic — that belongs in blueprint-ui.
-4. **Keep product-specific glue in app-local code.** Don't duplicate shared primitives locally.
-5. **Always use `encodeJobArgs` for ABI encoding.** Don't hand-roll encoding from form values.
-6. **Pre-estimate gas before submission.** Bypasses MetaMask RPC issues on Tangle chains.
-7. **Support dual-mode API clients.** Direct sidecar for dev, proxied operator for production.
-8. **Session tokens are sandboxId-scoped.** Don't reuse tokens across sandboxes.
-9. **Auto-clean expired sessions.** Use `gcSessions()` or rely on sessionMapStore's built-in cleanup.
+3. **Keep product-specific glue in app-local code.** Don't duplicate shared primitives locally.
+4. **Always use `encodeJobArgs` for ABI encoding.** Don't hand-roll encoding from form values.
+5. **Pre-estimate gas before submission.** Bypasses MetaMask RPC issues on Tangle chains.
+6. **Session tokens are sandboxId-scoped.** Don't reuse tokens across sandboxes.
+7. **Auto-clean expired sessions.** Use `gcSessions()` or rely on sessionMapStore's built-in cleanup.

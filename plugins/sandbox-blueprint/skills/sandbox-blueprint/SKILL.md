@@ -8,7 +8,7 @@ description: Use when building a sandbox-style Tangle Blueprint — container/VM
 Use this skill when building a Tangle Blueprint that provisions and manages sandbox containers or VMs. This captures the production-proven patterns from `ai-agent-sandbox-blueprint` and `ai-trading-blueprints` — the architecture for any blueprint that manages compute instances with sidecars.
 
 For the Rust SDK primitives (Router, TangleLayer, BlueprintRunner), see `tangle-blueprint-expert`.
-For the frontend (job submission, operator discovery, agent chat), see `blueprint-frontend`.
+For the general blueprint frontend (job submission, operator discovery, blueprint-ui), see `blueprint-frontend`.
 For the sandbox SDK packages (providers, sessions, streaming), see `sandbox-sdk`.
 
 ## What This Skill Covers
@@ -519,14 +519,111 @@ async fn main() -> Result<()> {
 9. **User BYOS3 snapshots are never deleted** by operator GC.
 10. **Reaper soft-stops before hard-deleting** — idle timeout stops, max lifetime deletes.
 
+## Frontend: Agent UI
+
+`@tangle-network/agent-ui` provides sandbox-specific frontend components for agent chat, terminal, and sidecar auth. This is distinct from `@tangle-network/blueprint-ui` (general blueprint frontend — see `blueprint-frontend` skill).
+
+Source: [packages/agent-ui](https://github.com/tangle-network/ai-agent-sandbox-blueprint/tree/main/packages/agent-ui)
+
+Entry points:
+- `@tangle-network/agent-ui` — components, hooks, types
+- `@tangle-network/agent-ui/primitives` — small helpers
+- `@tangle-network/agent-ui/terminal` — lazy xterm.js terminal
+- `@tangle-network/agent-ui/styles` — stylesheet
+
+### Sidecar Auth
+
+```typescript
+import { useSidecarAuth, useWagmiSidecarAuth } from '@tangle-network/agent-ui';
+
+// Generic (any signing method):
+const { token, isAuthenticated, authenticate } = useSidecarAuth(sidecarUrl, signMessage);
+
+// Wagmi adapter:
+const auth = useWagmiSidecarAuth(sidecarUrl);
+```
+
+### Chat
+
+```typescript
+import { ChatContainer, useSessionStream } from '@tangle-network/agent-ui';
+
+const { messages, partMap, isStreaming, send, abort } = useSessionStream({
+  sidecarUrl,
+  sessionId,
+  token,
+});
+
+<ChatContainer
+  messages={messages}
+  partMap={partMap}
+  isStreaming={isStreaming}
+  onSend={send}
+  branding={{ name: 'My Agent', icon: '...' }}
+/>
+```
+
+### Terminal
+
+```typescript
+import { TerminalView } from '@tangle-network/agent-ui/terminal';
+import { usePtySession } from '@tangle-network/agent-ui';
+
+const pty = usePtySession(sidecarUrl, token);
+
+<TerminalView session={pty} />
+// Lazy-loads xterm.js (~333KB)
+```
+
+### Dual-Mode API Client
+
+Apps should support both direct sidecar access (local dev) and proxied operator API (production):
+
+```typescript
+// Direct mode (local testing):
+const client = createDirectClient('http://localhost:32768', authToken);
+await client.prompt('hello');  // POST /agent/prompt
+
+// Proxied mode (production, through operator):
+const client = createProxiedClient('sandbox-id', pasetoToken, 'http://operator:9090');
+await client.prompt('hello');  // POST /api/sandboxes/sandbox-id/prompt
+```
+
+Pattern from [ui/src/lib/api/sandboxClient.ts](https://github.com/tangle-network/ai-agent-sandbox-blueprint/blob/main/ui/src/lib/api/sandboxClient.ts).
+
+### Embedded UI Pattern
+
+For blueprints that serve UI from the operator binary (Rust):
+
+```rust
+// In operator_api.rs:
+use include_dir::{include_dir, Dir};
+
+static CONTROL_PLANE_UI_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/../control-plane-ui");
+
+// Serve at root:
+// GET / → index.html
+// GET /app.js, /styles.css, /assets/* → static files
+```
+
+Build: `cd ui && pnpm run build:embedded` compiles React app into `control-plane-ui/` directory, which gets embedded at `cargo build` time.
+
+### Agent-UI Critical Files
+
+- `src/index.ts` — public API
+- `src/hooks/useSidecarAuth.ts` — EIP-191 + PASETO auth
+- `src/hooks/useSessionStream.ts` — SSE message streaming
+- `src/hooks/usePtySession.ts` — PTY terminal
+- `src/components/chat/ChatContainer.tsx` — full chat UI
+
 ## Reference Implementations
 
 | Blueprint | Location | Notes |
 |-----------|----------|-------|
-| ai-agent-sandbox-blueprint | `~/code/ai-agent-sandbox-blueprint/` | Production reference. 5 jobs, Docker/Firecracker/TEE. |
-| ai-trading-blueprints | `~/code/ai-trading-blueprints/` | Specialized DeFi variant. 12 jobs, adds validator committee + protocol adapters. Shares sandbox-runtime. |
-| openclaw-sandbox-blueprint | `~/code/openclaw-sandbox-blueprint/` | Embedded UI variant. Serves React app from operator binary via `include_dir!`. |
-| microvm-blueprint | `~/code/microvm-blueprint/` | Minimal reference. 5 lifecycle jobs + Axum query service. No sidecar SDK. |
+| ai-agent-sandbox-blueprint | [tangle-network/ai-agent-sandbox-blueprint](https://github.com/tangle-network/ai-agent-sandbox-blueprint) | Production reference. 5 jobs, Docker/Firecracker/TEE. |
+| ai-trading-blueprints | [tangle-network/ai-trading-blueprint](https://github.com/tangle-network/ai-trading-blueprint) | Specialized DeFi variant. 12 jobs, adds validator committee + protocol adapters. Shares sandbox-runtime. |
+| openclaw-sandbox-blueprint | [tangle-network/openclaw-sandbox-blueprint](https://github.com/tangle-network/openclaw-sandbox-blueprint) | Embedded UI variant. Serves React app from operator binary via `include_dir!`. |
+| microvm-blueprint | [tangle-network/microvm-blueprint](https://github.com/tangle-network/microvm-blueprint) | Minimal reference. 5 lifecycle jobs + Axum query service. No sidecar SDK. |
 
 ## Critical Files (ai-agent-sandbox-blueprint)
 

@@ -16,6 +16,7 @@ Production-proven patterns for blueprints that manage containers, VMs, or TEE en
 - Reaper + tiered garbage collection
 - Circuit breaker for sidecar health
 - BSM contract patterns with deployment mode flags
+- Agent-UI frontend (chat, terminal, sidecar auth, embedded UI)
 
 ## Based On
 
@@ -26,4 +27,4 @@ Patterns extracted from production blueprints:
 
 ## Usage
 
-Automatically triggers when building sandbox-style blueprints, working with container/VM provisioning in Tangle, or designing operator APIs for instance management.
+Automatically triggers when building sandbox-style blueprints, working with container/VM provisioning in Tangle, designing operator APIs for instance management, or using `@tangle-network/agent-ui`.

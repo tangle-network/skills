@@ -39,9 +39,9 @@ The Tangle core uses two internal functions to invoke BSM hooks:
 This distinction is critical: a reverting `onRequest` hook blocks the service request. A reverting `onServiceTermination` hook does NOT block termination.
 
 **Source files:**
-- Interface: `~/code/tnt-core/src/interfaces/IBlueprintServiceManager.sol`
-- Base contract: `~/code/tnt-core/src/BlueprintServiceManagerBase.sol`
-- Core calling code: `~/code/tnt-core/src/core/Base.sol` (lines 727-741)
+- Interface: [tnt-core/src/interfaces/IBlueprintServiceManager.sol](https://github.com/tangle-network/tnt-core/blob/main/src/interfaces/IBlueprintServiceManager.sol)
+- Base contract: [tnt-core/src/BlueprintServiceManagerBase.sol](https://github.com/tangle-network/tnt-core/blob/main/src/BlueprintServiceManagerBase.sol)
+- Core calling code: [tnt-core/src/core/Base.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/Base.sol) (lines 727-741)
 
 ---
 
@@ -49,7 +49,7 @@ This distinction is critical: a reverting `onRequest` hook blocks the service re
 
 The base contract provides default implementations for every hook in `IBlueprintServiceManager`. Blueprint developers inherit from it and override only what they need.
 
-**Source:** `~/code/tnt-core/src/BlueprintServiceManagerBase.sol`
+**Source:** [tnt-core/src/BlueprintServiceManagerBase.sol](https://github.com/tangle-network/tnt-core/blob/main/src/BlueprintServiceManagerBase.sol)
 
 ### State variables
 
@@ -192,7 +192,7 @@ function onServiceTermination(uint64 serviceId, address owner) external;
 
 **`onServiceTermination`** is notification-only. The service is already being terminated when this fires.
 
-**Source:** `~/code/tnt-core/src/core/ServicesRequests.sol`, `~/code/tnt-core/src/core/ServicesApprovals.sol`, `~/code/tnt-core/src/core/ServicesLifecycle.sol`
+**Source:** [tnt-core/src/core/ServicesRequests.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/ServicesRequests.sol), [tnt-core/src/core/ServicesApprovals.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/ServicesApprovals.sol), [tnt-core/src/core/ServicesLifecycle.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/ServicesLifecycle.sol)
 
 ---
 
@@ -220,7 +220,7 @@ These hooks only apply to services using `MembershipModel.Dynamic`. For `Members
 
 **`canJoin` and `canLeave`** are view functions called via `try/catch`. If `canJoin` returns `false`, the join is reverted with `Errors.Unauthorized()`. If the call fails (reverts), the join proceeds (fail-open for catch).
 
-**Source:** `~/code/tnt-core/src/core/ServicesLifecycle.sol`
+**Source:** [tnt-core/src/core/ServicesLifecycle.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/ServicesLifecycle.sol)
 
 ---
 
@@ -253,7 +253,7 @@ function onJobResult(
 
 **`onJobResult`** is notification-only. The result has already been recorded. Use this for application-level processing of outputs.
 
-**Source:** `~/code/tnt-core/src/core/JobsSubmission.sol`
+**Source:** [tnt-core/src/core/JobsSubmission.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/JobsSubmission.sol)
 
 ---
 
@@ -271,7 +271,7 @@ function onSlash(uint64 serviceId, bytes calldata offender, uint8 slashPercent) 
 
 **Note:** The `offender` parameter is `abi.encodePacked(operatorAddress)` -- decode with `address(bytes20(offender))`. The `slashPercent` is 0-100 (converted from internal basis points).
 
-**Source:** `~/code/tnt-core/src/core/Slashing.sol`
+**Source:** [tnt-core/src/core/Slashing.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/Slashing.sol)
 
 ---
 
@@ -289,7 +289,7 @@ function queryDisputeOrigin(uint64 serviceId) external view returns (address dis
 
 By default, the BSM contract itself is the slashing and dispute authority. Override to delegate to governance contracts, multi-sigs, or per-service dispute resolvers.
 
-**Source:** `~/code/tnt-core/src/core/Slashing.sol`
+**Source:** [tnt-core/src/core/Slashing.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/Slashing.sol)
 
 ---
 
@@ -312,7 +312,7 @@ function queryIsPaymentAssetAllowed(uint64 serviceId, address asset)
 
 **`queryIsPaymentAssetAllowed`** is called during service requests and job submissions. If it returns `false`, the operation reverts with `Errors.TokenNotAllowed`. The base implementation uses the `_permittedPaymentAssets` set -- native token (`address(0)`) is always allowed, and if no assets are explicitly configured, all are allowed.
 
-**Source:** `~/code/tnt-core/src/core/Payments.sol`, `~/code/tnt-core/src/core/Base.sol`
+**Source:** [tnt-core/src/core/Payments.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/Payments.sol), [tnt-core/src/core/Base.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/Base.sol)
 
 ---
 
@@ -386,7 +386,7 @@ function onAggregatedResult(
 
 When `requiresAggregation` returns `true` for a job, operators cannot use `submitResult` -- they must submit via `submitAggregatedResult` instead. The core contract enforces the threshold and verifies the BLS signature on-chain before calling `onAggregatedResult`.
 
-**Source:** `~/code/tnt-core/src/core/JobsAggregation.sol`
+**Source:** [tnt-core/src/core/JobsAggregation.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/JobsAggregation.sol)
 
 ---
 
@@ -401,7 +401,7 @@ The default path. A permitted caller submits a job via `submitJob`, operators re
 2. `onJobResult` -- called for each operator's result submission (notification)
 3. Job auto-completes when `resultCount >= getRequiredResultCount`
 
-**Source:** `~/code/tnt-core/src/core/JobsSubmission.sol`
+**Source:** [tnt-core/src/core/JobsSubmission.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/JobsSubmission.sol)
 
 ### BLS Aggregation Jobs
 
@@ -418,7 +418,7 @@ For jobs where `requiresAggregation(serviceId, jobIndex)` returns `true`. Operat
 - BLS signature is verified on-chain against registered operator pubkeys
 - BSM controls threshold via `getAggregationThreshold`
 
-**Source:** `~/code/tnt-core/src/core/JobsAggregation.sol`
+**Source:** [tnt-core/src/core/JobsAggregation.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/JobsAggregation.sol)
 
 ### RFQ (Request for Quote) Jobs
 
@@ -436,7 +436,7 @@ Operators provide signed price quotes off-chain. The caller collects quotes and 
 - `job.isRFQ = true` -- payment distribution uses quoted prices
 - Only operators in the quote set can submit results
 
-**Source:** `~/code/tnt-core/src/core/JobsRFQ.sol`
+**Source:** [tnt-core/src/core/JobsRFQ.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/JobsRFQ.sol)
 
 ---
 
@@ -485,7 +485,7 @@ developerBps + protocolBps + operatorBps + stakerBps = 10000 (100%)
 - **Operator share** distributed proportionally by effective exposure
 - **Staker share** forwarded to `ServiceFeeDistributor` for delegator rewards
 
-**Source:** `~/code/tnt-core/src/core/Payments.sol`
+**Source:** [tnt-core/src/core/Payments.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/Payments.sol)
 
 ---
 
@@ -522,7 +522,7 @@ After the dispute window passes, anyone calls `executeSlash(slashId)`:
 
 `SLASH_ADMIN_ROLE` can cancel a pending slash via `cancelSlash(slashId, reason)`.
 
-**Source:** `~/code/tnt-core/src/core/Slashing.sol`
+**Source:** [tnt-core/src/core/Slashing.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/Slashing.sol)
 
 ---
 
@@ -566,7 +566,7 @@ Operators can join via `joinService(serviceId, exposureBps)` and leave via the e
 
 **Emergency:** `forceRemoveOperator(serviceId, operator)` is callable only by the BSM contract itself, bypasses all checks.
 
-**Source:** `~/code/tnt-core/src/core/ServicesLifecycle.sol`
+**Source:** [tnt-core/src/core/ServicesLifecycle.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/ServicesLifecycle.sol)
 
 ---
 
@@ -598,7 +598,7 @@ function unpinBlueprint(uint64 blueprintId) external;
 3. `completeDeprecation(revision)` -- sets version to `address(0)`
 4. Emergency: `deprecateVersion(revision)` -- immediate deprecation
 
-**Source:** `~/code/tnt-core/src/MBSMRegistry.sol`, `~/code/tnt-core/src/MasterBlueprintServiceManager.sol`
+**Source:** [tnt-core/src/MBSMRegistry.sol](https://github.com/tangle-network/tnt-core/blob/main/src/MBSMRegistry.sol), [tnt-core/src/MasterBlueprintServiceManager.sol](https://github.com/tangle-network/tnt-core/blob/main/src/MasterBlueprintServiceManager.sol)
 
 ---
 
@@ -616,13 +616,13 @@ Only the service owner can add/remove permitted callers. The initial set is spec
 
 Job submission (`submitJob`, `submitJobFromQuote`) checks `_permittedCallers[serviceId].contains(caller)` and reverts with `NotPermittedCaller` if the caller is not in the set.
 
-**Source:** `~/code/tnt-core/src/core/ServicesLifecycle.sol` (lines 158-173)
+**Source:** [tnt-core/src/core/ServicesLifecycle.sol](https://github.com/tangle-network/tnt-core/blob/main/src/core/ServicesLifecycle.sol) (lines 158-173)
 
 ---
 
 ## 10. MockBSM Examples -- Three Levels of Complexity
 
-**Source:** `~/code/tnt-core/test/blueprints/mocks/MockBSM.sol`
+**Source:** [tnt-core/test/blueprints/mocks/MockBSM.sol](https://github.com/tangle-network/tnt-core/blob/main/test/blueprints/mocks/MockBSM.sol)
 
 ### Level 1: MockBSM_V1 -- Hook tracking
 
@@ -738,7 +738,7 @@ contract MockBSM_V3 is MockBSM_V2 {
 
 ## 11. Production BSM Example: AgentSandboxBlueprint
 
-**Source:** `~/code/ai-agent-sandbox-blueprint/contracts/src/AgentSandboxBlueprint.sol`
+**Source:** [ai-agent-sandbox-blueprint/contracts/src/AgentSandboxBlueprint.sol](https://github.com/tangle-network/ai-agent-sandbox-blueprint/blob/main/contracts/src/AgentSandboxBlueprint.sol)
 
 The AI Agent Sandbox Blueprint is a production BSM that demonstrates real-world patterns. It extends `OperatorSelectionBase` (which itself extends `BlueprintServiceManagerBase`) and is deployed in three modes: cloud, instance, and TEE instance.
 
@@ -789,7 +789,7 @@ function onUnregister(address operator) external virtual override onlyFromTangle
 - Supports seed-based deterministic selection for reproducible assignments
 - Validates operator eligibility against the registered blueprint
 
-**Source:** `~/code/ai-agent-sandbox-blueprint/contracts/src/OperatorSelection.sol`
+**Source:** [ai-agent-sandbox-blueprint/contracts/src/OperatorSelection.sol](https://github.com/tangle-network/ai-agent-sandbox-blueprint/blob/main/contracts/src/OperatorSelection.sol)
 
 ---
 

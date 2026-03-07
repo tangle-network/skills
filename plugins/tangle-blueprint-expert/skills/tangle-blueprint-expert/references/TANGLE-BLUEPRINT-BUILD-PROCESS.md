@@ -90,12 +90,12 @@ Output this as a short "Build Contract" section in chat before implementation.
 
 ## Phase 1 — Reference-first analysis
 Before writing code, inspect at least:
-- `~/code/blueprint`
-- `~/code/ai-agent-sandbox-blueprint`
-- `~/code/ai-trading-blueprints`
+- [tangle-network/blueprint](https://github.com/tangle-network/blueprint)
+- [tangle-network/ai-agent-sandbox-blueprint](https://github.com/tangle-network/ai-agent-sandbox-blueprint)
+- [tangle-network/ai-trading-blueprint](https://github.com/tangle-network/ai-trading-blueprint)
 - and, when UI is in scope:
-  - `~/code/blueprint-ui`
-  - `~/code/ai-agent-sandbox-blueprint/packages/agent-ui`
+  - [tangle-network/blueprint-ui](https://github.com/tangle-network/blueprint-ui)
+  - [tangle-network/ai-agent-sandbox-blueprint](https://github.com/tangle-network/ai-agent-sandbox-blueprint) `packages/agent-ui`
 
 Extract and document:
 - crate/workspace structure

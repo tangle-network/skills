@@ -35,10 +35,10 @@ Do not skip the overview. It defines the protocol and business model semantics.
 This skill lives at `~/skills/tangle-blueprint-expert/` and is symlinked into `~/.claude/skills/`.
 
 Reference codebases:
-- `~/code/blueprint` -- Blueprint SDK (Rust, cargo-tangle CLI)
-- `~/code/tnt-core` -- Core Tangle protocol contracts (BSM hooks, staking, payments)
-- `~/code/ai-agent-sandbox-blueprint` -- Production blueprint example
-- `~/code/ai-trading-blueprints` -- Production blueprint example
+- [tangle-network/blueprint](https://github.com/tangle-network/blueprint) -- Blueprint SDK (Rust, cargo-tangle CLI)
+- [tangle-network/tnt-core](https://github.com/tangle-network/tnt-core) -- Core Tangle protocol contracts (BSM hooks, staking, payments)
+- [tangle-network/ai-agent-sandbox-blueprint](https://github.com/tangle-network/ai-agent-sandbox-blueprint) -- Production blueprint example
+- [tangle-network/ai-trading-blueprint](https://github.com/tangle-network/ai-trading-blueprint) -- Production blueprint example
 
 ## Core Contract (Never Violate)
 
