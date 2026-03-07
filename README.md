@@ -29,7 +29,7 @@ Or browse and install:
 | Plugin | Description |
 |--------|-------------|
 | [tangle-blueprint-expert](./plugins/tangle-blueprint-expert/) | Expert workflow for building Tangle Blueprints -- SDK patterns, BSM hooks, CLI lifecycle, production runtime |
-| [sandbox-sdk](./plugins/sandbox-sdk/) | Dev-container sandbox stack -- orchestrator sidecars, backend wiring, SDK providers, CLI OAuth |
+| [sandbox-sdk](./plugins/sandbox-sdk/) | Build apps on the Tangle Sandbox SDK -- backends, sessions, streaming, telemetry, provider adapters |
 | [plan-mega-review](./plugins/plan-mega-review/) | Garry Tan's Mega Plan Review Mode with three scope modes and 10-section review gates |
 
 ## Manual Installation

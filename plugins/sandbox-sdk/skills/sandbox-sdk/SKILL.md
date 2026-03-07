@@ -1,107 +1,52 @@
 ---
 name: sandbox-sdk
-description: Use when working on the dev-container sandbox stack itself: orchestrator, sidecar, drivers, SDK providers, session gateway, storage, CLI OAuth, compliance testing, or request/env/config plumbing across the sandbox runtime.
+description: Use when building applications or services on top of the Tangle Sandbox SDK — configuring backends, managing sessions, streaming agent output, integrating providers, adding telemetry, or building new provider adapters.
 ---
 
 # Sandbox SDK
 
-Use this skill when the task is about how agents run inside the dev-container sandbox system, not when only app-level prompting or UI behavior changes.
+Use this skill when building applications or services on top of the open-source Sandbox SDK (`@tangle-network/sdk*`, `@tangle-network/agent-interface`). This covers how to configure and use the SDK to connect to agent backends, manage sessions, stream output, collect telemetry, and build new provider adapters.
+
+This is the public SDK surface. For internal orchestrator/driver/deployment infrastructure, see `sandbox-infra` (internal, not published).
 
 ## What This Skill Covers
 
-- Orchestrator sidecar/project provisioning and lifecycle
-- Driver system (local, docker, host-agent, firecracker, tangle)
-- Sidecar backend selection, initialization, and caching
-- SDK provider architecture and the `SdkProviderAdapter` contract
-- All five backends: opencode (primary), codex, claude-code, amp, factory-droids
-- CLI OAuth auth-file materialization inside sandbox HOME
-- Session gateway and SSE event routing
-- Storage orchestration and workspace persistence
-- Driver compliance testing harness
-- Shared request/config/schema changes across the stack
+- Configuring and connecting to agent backends (opencode, codex, claude-code, amp, factory-droids)
+- Building applications that manage agent sessions (create, fork, execute, stream, shutdown)
+- Consuming SSE event streams and processing agent output
+- Integrating telemetry (traces, signals, sinks)
+- Building new provider adapters using the CLI base class
+- Auth configuration (API key vs OAuth) and auth file materialization
+- Using SDK transports (fetch, WebSocket, Cloudflare Workers)
+- Agent memory, collaboration, and batch execution features
 
-## Runtime Model
+## SDK Package Ecosystem
 
-Treat the sandbox as the real runtime:
+Published `@tangle-network/*` packages:
 
-1. Caller app sends backend config to orchestrator.
-2. Orchestrator selects a driver (local, docker, host-agent, firecracker, tangle).
-3. Orchestrator provisions or reuses a sidecar container/VM.
-4. Orchestrator converts backend config into environment variables and passes to driver.
-5. Driver launches container with env vars. Environment precedence: `systemEnv > backendEnv > user.env`.
-6. Sidecar resolves backend config during bootstrap/session creation.
-7. Sidecar initializes the backend via `BackendManager` and provider adapter registry.
-8. CLI auth files are materialized under sandbox `HOME` before CLI execution.
-9. Session gateway routes SSE events from sidecar back to SDK clients.
-
-Do not assume host paths or host auth state are visible inside the sandbox.
-
-## Backend Types
-
-Five backends in the `SDK_PROVIDER_REGISTRY` (`apps/sidecar/src/backends/backend-manager.ts`):
-
-| Backend | Provider | Type | Notes |
-|---------|----------|------|-------|
-| `opencode` | `OpencodeProviderAdapter` | Server-based | Primary. Model overridable per-request. Supports profiles. |
-| `codex` | `CodexProviderAdapter` | CLI-based | Inherits `CliProviderAdapterBase`. |
-| `claude-code` | `ClaudeCodeProviderAdapter` | CLI-based | Inherits `CliProviderAdapterBase`. |
-| `amp` | `AmpProviderAdapter` | CLI-based | Sourcegraph AMP. |
-| `factory-droids` | `FactoryDroidsProviderAdapter` | CLI-based | Factory Droids. |
-
-Profile-based format: `"opencode:profile-name"` (e.g., `"opencode:with-web-search"`, `"opencode:full-mcp-stack"`).
-
-### Backend Caching Strategy
-
-Backend instances are cached by key to enable reuse across sessions:
-
-- **OpenCode**: Cache key = workspace + profile name. Model is **excluded** (overridable per-request via API).
-- **CLI backends** (codex, claude-code, amp, factory-droids): Cache key = workspace + model + `authFiles` signature (SHA256 hash of paths + content).
-
-If auth payloads differ, backend instances are not reused. Controlled by `configMatches()` in `backend-manager.ts`.
-
-`OPENCODE_BACKEND_PERSIST` env var (default: `true`) keeps OpenCode server alive across sessions via refCount.
-
-## Driver System
-
-Five drivers behind a unified `ContainerDriver` interface (`apps/orchestrator/src/driver/interface/types.ts`):
-
-| Driver | File | Description |
-|--------|------|-------------|
-| `local` | `driver/local.ts` | Runs sidecar as Node.js process. No Docker. |
-| `docker` | `driver/docker.ts` | Docker containers with layered Dockerfile builds. |
-| `host-agent` | `driver/host-agent.ts` | Proxies to remote Docker daemons via host-agent HTTP API. Multi-host. |
-| `firecracker` | `driver/firecracker/index.ts` | Firecracker microVMs. Snapshots, vsock, TAP networking. |
-| `tangle` | `driver/tangle/index.ts` | On-chain job submission to ai-agent-sandbox-blueprint. Chain is source of truth. |
-
-**Factory**: `createDriver()` in `driver/factory.ts` instantiates based on `config.driver.type`.
-
-### ContainerDriver Interface
-
-Key methods:
-- `createContainer(config: ContainerConfig)` → `ContainerInstance`
-- `startContainer(id)` / `stopContainer(id)` / `removeContainer(id)`
-- `getContainer(id)` / `listContainers(filter)`
-- `healthCheck()` → `DriverHealth`
-- Optional: `selectHost()`, `releaseHost()`, `getContainerEndpointFast()`, `cleanContainerWorkspace()`
-
-### Driver Capabilities (API)
-
-Exposed at `/drivers` route (`apps/orchestrator/src/routes/drivers.ts`):
-
-```
-suspend, snapshots, volumes, networks, multiHost, userManagement, metrics, migration
-```
-
-These are **runtime capabilities**, not the test-time config flags (`supportsStartStop`, `createStartsContainer`, etc.) which are test configuration overrides in `tests/helpers/driver-test-suites/types.ts`.
-
-### ContainerConfig
-
-Key fields (`driver/interface/types.ts`):
-- `env: Record<string, string>` — merged environment variables
-- `resources: ResourceLimits` — cpu, memory, disk, pids
-- `security: SecurityOptions` — readOnly, noNewPrivileges, user, capabilities
-- `git?` — repository cloning with sparse checkout
-- `tee?: TeeConfig` — trusted execution (none | tdx | nitro | sev)
+| Package | Purpose |
+|---------|---------|
+| `agent-interface` | Canonical `SdkProviderAdapter` contract and all shared types |
+| `sdk` | High-level SDK — type-safe orchestrator and sidecar clients |
+| `sdk-core` | Transport interfaces, SSE primitives (`SSEChunkParser`, `parseSSEStream`, `parseSSEData`), auth, cache |
+| `sdk-telemetry` | Trace collection, telemetry sinks (Langfuse, OTEL, HTTP, Console), usage tracking |
+| `sdk-signals` | External signal collection for trace enrichment (GitHub webhooks) |
+| `sdk-provider-cli-base` | Base adapter for CLI-based AI agent providers |
+| `sdk-provider-opencode` | OpenCode server-based provider (primary) |
+| `sdk-provider-codex` | Codex CLI provider |
+| `sdk-provider-claude-code` | Claude Code CLI provider |
+| `sdk-provider-amp` | AMP (Sourcegraph) CLI provider |
+| `sdk-provider-factory-droids` | Factory Droids CLI provider |
+| `sdk-cli-runner` | Generic CLI process spawning with stdin/stdout streaming and JSONL parsing |
+| `sdk-session-persistence` | File-based session/message storage for CLI providers without built-in persistence |
+| `sdk-memory` | Agent memory system (episodes, patterns, snippets, facts) |
+| `sdk-collaboration` | Real-time Yjs/CRDT sync |
+| `sdk-batch` | Batch execution primitives for agent task orchestration |
+| `sdk-billing` | Usage tracking and credit management |
+| `sdk-image-builder` | Chainable image builder for custom sandbox container images |
+| `sdk-transport-fetch` | Fetch/SSE transport adapter |
+| `sdk-transport-ws` | WebSocket transport adapter |
+| `sdk-transport-cf` | Cloudflare Workers transport adapter with Durable Object bridge |
 
 ## Provider Architecture
 
@@ -121,40 +66,148 @@ interface SdkProviderAdapter {
 }
 ```
 
+### Two Provider Models
+
+**Server-based (OpenCode)**:
+- Connects to a running OpenCode HTTP server rather than spawning a CLI process.
+- Model overridable per-request (not baked into instance).
+- Supports agent profiles (`"opencode:profile-name"`) for configuration presets.
+- Primary provider in the ecosystem.
+- Package: `sdk-provider-opencode` (~121KB adapter).
+
+**CLI-based (Codex, Claude Code, AMP, Factory Droids)**:
+- Inherit from `CliProviderAdapterBase` in `sdk-provider-cli-base`.
+- Spawn a CLI process per execution with stdin/stdout streaming.
+- JSONL event parsing and transformation.
+- One model per instance (model baked into CLI args).
+
 ### CLI Provider Base Class
 
-`packages/sdk-provider-cli-base/src/base-adapter.ts` — 683-line base for CLI-based providers.
+`packages/sdk-provider-cli-base/src/base-adapter.ts` — base for all CLI-based providers.
 
 Subclasses override:
 - `buildExecArgs()` — CLI command construction
 - `buildExecEnv()` — environment variable setup
 - `createEventParser()` — JSONL event transformation
-- `mapEventToStreamEvents()` — event mapping
+- `mapEventToStreamEvents()` — event mapping to canonical `MessagePartUpdatedEvent`
 
-### Key Shared Types (`agent-interface`)
+### Building a New CLI Provider
 
-- **Parts**: `TextPart`, `ToolPart`, `ReasoningPart`, `FilePart`, `SubtaskPart`
-- **Stream events**: `MessagePartUpdatedEvent` (primary), `tool-heartbeat`, `status`, `question`
-- **Execution**: `AgentExecutionInput` (message, systemPrompt, sessionId, traceId), `AgentExecutionResult` (text, toolInvocations, tokenUsage, timing)
-- **Config**: `ProviderConfig` (model, server, workspace, metadata, profile), `CliAuthFile` (path, content, mode)
+1. Create `packages/sdk-provider-{name}/` with `src/adapter.ts` and `src/types.ts`.
+2. Extend `CliProviderAdapterBase` from `sdk-provider-cli-base`.
+3. Define config type extending `CliProviderConfig`.
+4. Implement the four override methods above.
+5. Register in sidecar's `SDK_PROVIDER_REGISTRY` (`apps/sidecar/src/backends/backend-manager.ts`).
 
-## Session Gateway
+## Backend Types
 
-`apps/orchestrator/src/session-gateway/index.ts` — routes SSE events from sidecars to SDK clients.
+Five backends registered in `SDK_PROVIDER_REGISTRY` (`apps/sidecar/src/backends/backend-manager.ts`):
 
-- Requires `getProductAuthInfo(productId)` for token validation
-- Validates session tokens to prevent cross-session event leakage
-- Event types: `agent.event`, `container.ready`, `container.removed`, `port.opened`
+| Backend | Provider | Type | Notes |
+|---------|----------|------|-------|
+| `opencode` | `OpencodeProviderAdapter` | Server-based | Primary. Model overridable per-request. Supports profiles. |
+| `codex` | `CodexProviderAdapter` | CLI-based | Inherits `CliProviderAdapterBase`. |
+| `claude-code` | `ClaudeCodeProviderAdapter` | CLI-based | Inherits `CliProviderAdapterBase`. |
+| `amp` | `AmpProviderAdapter` | CLI-based | Sourcegraph AMP. |
+| `factory-droids` | `FactoryDroidsProviderAdapter` | CLI-based | Factory Droids. |
+
+Profile-based format: `"opencode:profile-name"` (e.g., `"opencode:with-web-search"`, `"opencode:full-mcp-stack"`).
+
+### Backend Caching Strategy
+
+Backend instances are cached by key to enable reuse across sessions:
+
+- **OpenCode**: Cache key = workspace + profile name. Model is **excluded** (overridable per-request via API).
+- **CLI backends**: Cache key = workspace + model + `authFiles` signature (SHA256 hash of paths + content).
+
+If auth payloads differ, backend instances are not reused. Controlled by `configMatches()` in `backend-manager.ts`.
+
+`OPENCODE_BACKEND_PERSIST` env var (default: `true`) keeps OpenCode server alive across sessions via refCount.
+
+## Key Shared Types (`agent-interface`)
+
+### Part Types
+- `TextPart` — message text content
+- `ToolPart` — tool execution state (pending, running, completed, error)
+- `ReasoningPart` — model thinking/reasoning content
+- `FilePart` — file references
+- `SubtaskPart` — sub-agent spawning
+- Union: `type Part = TextPart | ToolPart | ...`
+
+### Stream Events
+- `MessagePartUpdatedEvent` — primary event for all part state changes
+- Supporting: `tool-heartbeat`, `tool-slow`, `model-processing`, `status`, `warning`, `raw`, `session.updated`, `question`
+
+### Execution Model
+- `AgentExecutionInput` — request with message, systemPrompt, sessionId, userId, traceId, headers
+- `AgentExecutionResult` — response with text, toolInvocations, reasoning, tokenUsage, timing
+
+### Configuration
+- `ProviderConfig` — model (apiKey, baseUrl, authMode, authFiles), server, workspace, metadata, profile
+- `CliAuthFile` — auth files to materialize: `{ path: string, content: string, mode?: number }`
+
+### Host Services
+- `SdkMemoryHost` — list(), remember(), format()
+- `SdkToolHost` — buildPromptBlock(), registerInstruction(), getRegisteredTools()
+- `SdkRecorder` — recordUserMessage(), appendAssistantParts(), setSessionId()
+- `SdkTraceContext` — addEvent(), addSignal(), complete(), fail(), trackSubAgent()
+
+### MCP Configuration
+- `LocalMcpConfig` — stdio-based MCP servers (command, args, env)
+- `RemoteMcpConfig` — HTTP-based MCP servers (url, headers)
+- `McpServerStatus` — connection status monitoring
+
+### Token Usage and Timing
+- `TokenUsage` — inputTokens, outputTokens, cacheReadInputTokens, reasoningTokens, cost
+- `ExecutionTiming` — startedAt, completedAt, durationMs
 
 ## Session Lifecycle (Sidecar)
 
-1. **HTTP**: POST `/agents/session` validates `CreateSessionRequestSchema` (`routes/agents-sessions.ts`)
+1. **HTTP**: POST `/agents/session` validates `CreateSessionRequestSchema` (`routes/agents-sessions.ts`).
 2. **Session store**: New `SessionEntry` with UUID, backendType, timestamps. Write-through cache + disk. 24h TTL.
-3. **Backend session**: OpenCode gets async retry (5 attempts). CLI backends return sidecar sessionId directly.
+3. **Backend session**: OpenCode gets async retry (5 attempts, 250ms initial backoff). CLI backends return sidecar sessionId directly.
 4. **Workspace**: Container mode uses `AGENT_WORKSPACE_ROOT` directly. Local mode uses per-session subdir under `/tmp/agent/workspace/{sessionId}`.
 5. **Auth materialization**: `materializeCliAuthFiles()` writes to sandbox HOME with 0o600 permissions. Rejects absolute paths and `../` traversal.
 
-## Storage and State
+## SSE Streaming
+
+### Primitives (use these, never roll your own)
+
+From `sdk-core`:
+- `SSEChunkParser` — stateful chunk accumulator for streaming SSE
+- `parseSSEStream()` — async generator for streaming SSE events
+- `parseSSEData()` — single event parser
+
+From `sdk-telemetry`:
+- `sseToTraceEvent()` — convert SSE event to trace event
+- `sseToSignal()` — convert SSE event to outcome signal
+
+Pipeline: `SSE Stream → SSEChunkParser → parseSSEData() → sseToTraceEvent() → TraceEvent`
+
+### Sidecar SSE Implementation
+
+`apps/sidecar/src/routes/agents-stream.ts`:
+- SSE headers: `Content-Type: text/event-stream`, `Cache-Control: no-cache`, `Connection: keep-alive`
+- Event format: `event: {type}\ndata: {JSON}\n\n`
+- Event buffer (`events/event-buffer-manager.ts`): stores events with auto-replay for late-joining clients
+- Metrics: `sidecar_sse_connections_active`, `sidecar_sse_messages_total`, `sidecar_sse_write_failures_total`
+
+## Telemetry
+
+`sdk-telemetry` provides a sink-based architecture:
+
+| Sink | Description |
+|------|-------------|
+| `LangfuseSink` | Native Langfuse integration (recommended) |
+| `OtelTelemetrySink` | OpenTelemetry OTLP backend |
+| `HttpTelemetrySink` | Generic HTTP endpoint |
+| `ConsoleTelemetrySink` | Debug/logging |
+| `MultiTelemetrySink` | Composite sink for multiple backends |
+
+Trace types: `message.part.updated`, `message.updated`, `error`, `custom`
+Signals: `build_passed`, `tests_failed`, `user_approved`, `task_completed`, etc.
+
+## Storage and State (Sidecar)
 
 ```
 {AGENT_WORKSPACE_ROOT}/
@@ -173,108 +226,7 @@ Subclasses override:
 - **Event buffer** (`events/event-buffer-manager.ts`): In-memory + disk with replay for late-joining SSE clients.
 - **Workspace resolution** (`lib/workspace-resolution.ts`): Single source of truth for workspace path computation.
 
-## Orchestrator Subsystems
-
-Beyond sidecar provisioning, the orchestrator manages:
-
-- **Project manager** (`orchestrator/project-manager.ts`): Projects = containers + storage + networking. Statuses: provisioning, ready, degraded, suspended, failed.
-- **Health monitoring** (`orchestrator/index.ts`): Background check every 30s. Auto-restarts crashed containers.
-- **Container pool** (`services/container-pool.ts`): Pre-warmed containers for fast startup.
-- **Storage orchestrator** (`storage/storage-orchestrator.ts`): XFS volumes with quota, S3 snapshots (restic-based), BYOS3.
-- **Credential provider** (`credentials/`): Validates backend config before creating containers. Three strategies: env, secrets, files.
-- **Pangolin networking** (`services/pangolin-lifecycle.ts`): Public tunnel management for preview links and custom domains.
-- **Provision progress** (`provisioning/progress.ts`): Steps: match → networking → git → host-select → storage → image → container → health-check → sidecar-ready → workspace.
-
-## SDK Package Ecosystem
-
-35 packages under `packages/`. Key ones for sandbox work:
-
-| Package | Purpose |
-|---------|---------|
-| `agent-interface` | Canonical `SdkProviderAdapter` contract and shared types |
-| `sdk` | High-level SDK — type-safe orchestrator and sidecar clients |
-| `sdk-core` | Transport interfaces, SSE primitives (`SSEChunkParser`, `parseSSEStream`, `parseSSEData`) |
-| `sdk-telemetry` | Trace collection, telemetry sinks (Langfuse, OTEL, HTTP, Console) |
-| `sdk-provider-cli-base` | Base adapter for CLI-based providers |
-| `sdk-provider-opencode` | OpenCode server-based provider (primary) |
-| `sdk-provider-codex` | Codex CLI provider |
-| `sdk-provider-claude-code` | Claude Code CLI provider |
-| `sdk-provider-amp` | AMP (Sourcegraph) CLI provider |
-| `sdk-provider-factory-droids` | Factory Droids CLI provider |
-| `sdk-cli-runner` | Generic CLI process spawning with stdin/stdout streaming |
-| `sdk-session-persistence` | File-based session/message storage for CLI providers |
-| `sdk-memory` | Agent memory system (episodes, patterns, snippets, facts) |
-| `sdk-collaboration` | Real-time Yjs/CRDT sync |
-| `sdk-billing` | Usage tracking and credit management |
-| `firecracker-runtime` | Firecracker VM runtime support |
-| `pangolin-sdk` | Pangolin tunnel integration |
-
-## Current Critical Files
-
-### Shared Provider Contract
-- `packages/agent-interface/src/index.ts` — SdkProviderAdapter interface, Part types, stream events
-- `packages/sdk-provider-cli-base/src/types.ts` — CliProviderConfig, CliExecArgs
-- `packages/sdk-provider-cli-base/src/base-adapter.ts` — CLI base class (683 lines)
-
-### Orchestrator
-- `apps/orchestrator/src/routes/sidecars.ts` — sidecar provisioning route, backend env mapping
-- `apps/orchestrator/src/orchestrator/project-manager.ts` — project lifecycle
-- `apps/orchestrator/src/orchestrator/sidecar-manager.ts` — sidecar create/reuse/health
-- `apps/orchestrator/src/orchestrator/container-config.ts` — final container config builder
-- `apps/orchestrator/src/project/types.ts` — project types
-- `apps/orchestrator/src/schemas/agent-request.ts` — orchestrator request schemas
-- `apps/orchestrator/src/driver/factory.ts` — driver factory
-- `apps/orchestrator/src/driver/interface/types.ts` — ContainerDriver contract, ContainerConfig
-- `apps/orchestrator/src/credentials/` — credential provider system
-- `apps/orchestrator/src/session-gateway/index.ts` — SSE event routing
-
-### Sidecar
-- `apps/sidecar/src/backends/interface.ts` — BackendType, BackendConfig, AgentBackend interface
-- `apps/sidecar/src/backends/backend-manager.ts` — provider registry, caching, config matching
-- `apps/sidecar/src/backends/sdk-backend.ts` — SdkBackend initialization, auth materialization
-- `apps/sidecar/src/backends/cli-auth.ts` — auth file materialization with path validation
-- `apps/sidecar/src/config/backend-config.ts` — env var loading for backend config
-- `apps/sidecar/src/agents/bootstrap.ts` — merges env + request overrides into AgentBootstrapConfig
-- `apps/sidecar/src/agents/run-controller.ts` — execution entrypoint, session resolution
-- `apps/sidecar/src/agents/session-store.ts` — session persistence, write-through cache
-- `apps/sidecar/src/lib/workspace-resolution.ts` — single source of truth for workspace paths
-- `apps/sidecar/src/routes/agents-sessions.ts` — session CRUD
-- `apps/sidecar/src/routes/agents-stream.ts` — SSE streaming
-- `apps/sidecar/src/routes/agents-config.ts` — config routes
-- `apps/sidecar/src/schemas/agent-request.ts` — sidecar request schemas
-- `apps/sidecar/src/schemas/agent-schemas.ts` — BackendConfigSchema, CreateSessionRequestSchema
-
-### Provider-Specific
-- `packages/sdk-provider-opencode/src/adapter.ts` — primary provider (~121KB)
-- `packages/sdk-provider-codex/src/types.ts` — CodexConfig, CodexAuthMode
-- `packages/sdk-provider-claude-code/src/types.ts` — ClaudeCodeConfig, ClaudeCodeAuthMode
-
-## Rules
-
-1. Keep backend config explicit.
-   - Backend type, model, auth mode, and auth payloads should be visible in code and easy to trace.
-
-2. Prefer one shared contract.
-   - If a field like `authMode` or `authFiles` is added, propagate it through shared types and schemas instead of inventing backend-specific ad hoc shapes.
-
-3. Materialize CLI OAuth inside sandbox `HOME`.
-   - Codex OAuth auth belongs under `.codex/...`.
-   - Claude Code OAuth auth belongs under `.claude/...`.
-   - Do not confuse provider session-persistence directories with CLI auth directories.
-
-4. Avoid host-only assumptions.
-   - Paths like `/opt/homebrew/bin/codex` are usually wrong inside sidecars unless the image actually contains them.
-
-5. Keep backend reuse auth-aware.
-   - OpenCode: cache key excludes model (overridable per-request). Only apiKey, baseUrl, profile matter.
-   - CLI backends: full model + authFiles signature in cache key. Different auth = different instance.
-
-6. SSE primitives must come from `sdk-core` / `sdk-telemetry`.
-   - Use `SSEChunkParser`, `parseSSEStream`, `parseSSEData` from `sdk-core`.
-   - Use `sseToTraceEvent()`, `sseToSignal()` from `sdk-telemetry`.
-   - Never implement custom SSE parsing in runtime or tests.
-
-## Native CLI OAuth Shape
+## CLI OAuth
 
 Use this request model for native sandbox backends:
 
@@ -315,107 +267,106 @@ Auth file materialization (`cli-auth.ts`):
 | `OPENCODE_BACKEND_PERSIST` | `true` | Keep OpenCode server alive across sessions |
 | `AGENT_AUTO_LOAD_CONTAINER_DOMAINS` | `true` | Auto-load domain context by container type |
 
+## Critical Files
+
+### Provider Contract
+- `packages/agent-interface/src/index.ts` — SdkProviderAdapter interface, Part types, stream events, HostServices
+- `packages/sdk-provider-cli-base/src/types.ts` — CliProviderConfig, CliExecArgs, ExecutionState
+- `packages/sdk-provider-cli-base/src/base-adapter.ts` — CLI base class (683 lines)
+
+### Provider Implementations
+- `packages/sdk-provider-opencode/src/adapter.ts` — primary provider (~121KB), profiles, MCP
+- `packages/sdk-provider-codex/src/types.ts` — CodexConfig, CodexAuthMode
+- `packages/sdk-provider-claude-code/src/types.ts` — ClaudeCodeConfig, ClaudeCodeAuthMode
+
+### SDK Core
+- `packages/sdk-core/src/sse/` — SSEChunkParser, parseSSEStream, parseSSEData
+- `packages/sdk-core/src/transport/` — ConnectionManager, BaseTransportAdapter
+- `packages/sdk-core/src/auth/` — token scoping, generation, validation
+
+### Telemetry
+- `packages/sdk-telemetry/src/sse-parser.ts` — SSE to trace event conversion
+- `packages/sdk-telemetry/src/trace-types.ts` — TraceEvent, Signal types
+- `packages/sdk-telemetry/src/sinks/` — Langfuse, OTEL, HTTP, Console sinks
+
+### Sidecar (Runtime)
+- `apps/sidecar/src/backends/interface.ts` — BackendType, BackendConfig, AgentBackend interface
+- `apps/sidecar/src/backends/backend-manager.ts` — provider registry, caching, config matching
+- `apps/sidecar/src/backends/sdk-backend.ts` — SdkBackend initialization, auth materialization
+- `apps/sidecar/src/backends/cli-auth.ts` — auth file materialization with path validation
+- `apps/sidecar/src/config/backend-config.ts` — env var loading for backend config
+- `apps/sidecar/src/agents/bootstrap.ts` — merges env + request overrides into AgentBootstrapConfig
+- `apps/sidecar/src/agents/run-controller.ts` — execution entrypoint, session resolution
+- `apps/sidecar/src/agents/session-store.ts` — session persistence, write-through cache
+- `apps/sidecar/src/lib/workspace-resolution.ts` — single source of truth for workspace paths
+- `apps/sidecar/src/routes/agents-sessions.ts` — session CRUD
+- `apps/sidecar/src/routes/agents-stream.ts` — SSE streaming
+- `apps/sidecar/src/schemas/agent-schemas.ts` — BackendConfigSchema, CreateSessionRequestSchema
+
+## Rules
+
+1. Keep backend config explicit.
+   - Backend type, model, auth mode, and auth payloads should be visible in code and easy to trace.
+
+2. Prefer one shared contract.
+   - If a field like `authMode` or `authFiles` is added, propagate it through shared types and schemas instead of inventing backend-specific ad hoc shapes.
+
+3. Materialize CLI OAuth inside sandbox `HOME`.
+   - Codex OAuth auth belongs under `.codex/...`.
+   - Claude Code OAuth auth belongs under `.claude/...`.
+   - Do not confuse provider session-persistence directories with CLI auth directories.
+
+4. Avoid host-only assumptions.
+   - Paths like `/opt/homebrew/bin/codex` are usually wrong inside sidecars unless the image actually contains them.
+
+5. Keep backend reuse auth-aware.
+   - OpenCode: cache key excludes model (overridable per-request). Only apiKey, baseUrl, profile matter.
+   - CLI backends: full model + authFiles signature in cache key. Different auth = different instance.
+
+6. SSE primitives must come from `sdk-core` / `sdk-telemetry`.
+   - Use `SSEChunkParser`, `parseSSEStream`, `parseSSEData` from `sdk-core`.
+   - Use `sseToTraceEvent()`, `sseToSignal()` from `sdk-telemetry`.
+   - Never implement custom SSE parsing in runtime or tests.
+
 ## Required Change Pattern
 
-When modifying sandbox backend configuration, check these layers in order:
+When modifying SDK or sidecar backend configuration, check these layers in order:
 
 1. Shared type contract
-   - `agent-interface`
-   - shared CLI base types
+   - `agent-interface` types
+   - shared CLI base types in `sdk-provider-cli-base`
 
-2. Orchestrator schema and env propagation
-   - sidecar start route (`routes/sidecars.ts`)
-   - credential provider validation (`credentials/`)
-   - container config builder (`orchestrator/container-config.ts`)
-
-3. Sidecar schema and env loading
+2. Sidecar schema and env loading
    - request schemas (`schemas/agent-schemas.ts`)
    - backend env loader (`config/backend-config.ts`)
 
-4. Sidecar runtime resolution
+3. Sidecar runtime resolution
    - bootstrap config (`agents/bootstrap.ts`)
    - session creation resolution (`agents/run-controller.ts`)
    - workspace resolution (`lib/workspace-resolution.ts`)
-   - config routes if they expose backend state
 
-5. Backend initialization
+4. Backend initialization
    - `SdkBackend` (`backends/sdk-backend.ts`)
    - backend reuse/config matching (`backends/backend-manager.ts`)
    - provider-specific config typing
 
-6. Focused tests
+5. Focused tests
    - auth-file parsing/materialization
    - bootstrap/env inheritance
    - request schema acceptance if the contract changed
 
-## Driver Compliance Testing
-
-All five drivers share a compliance harness (`apps/orchestrator/tests/helpers/driver-test-suites/`).
-
-### Runner
-
-`compliance-runner.ts` → `runDriverComplianceSuites(context, options)` runs four suites:
-1. `createLifecycleTests()` — create/start/stop/remove lifecycle
-2. `createErrorRecoveryTests()` — error handling and recovery
-3. `createConcurrentOperationsTests()` — parallel container operations
-4. `createHealthCheckTests()` — health monitoring
-
-### Test Context
-
-```typescript
-{
-  createDriver: () => ContainerDriver;  // fresh driver per test
-  driverName: string;
-  cleanup: () => Promise<void>;
-  skipReasons?: {
-    lifecycle?: string;
-    errorRecovery?: string;
-    concurrentOperations?: string;
-    healthChecks?: string;
-  };
-}
-```
-
-### Environment Gates
-
-| Variable | Gates |
-|----------|-------|
-| `RUN_DRIVER_COMPLIANCE_TESTS=true` | All compliance suites |
-| `RUN_DOCKER_INTEGRATION_TESTS=true` | Docker-specific tests |
-| `RUN_TANGLE_E2E=true` | Tangle tests |
-| `RUN_TANGLE_E2E_MUTATION=true` | Tangle on-chain mutation tests |
-
-### Base Test Classes
-
-`apps/orchestrator/tests/helpers/base-test-classes.ts`:
-- `BaseUnitTest` — mock setup/teardown
-- `BaseIntegrationTest` — env var management
-- `BaseApiTest` — HTTP client + sidecar tracking. Always use `createTestSidecar()` for proper cleanup.
-
 ## Fast Validation
-
-Use targeted checks first:
 
 ```bash
 cd apps/sidecar
 pnpm exec vitest run tests/unit/cli-auth.test.ts tests/unit/backend-config-auth.test.ts
 ```
 
-For import smoke:
+Import smoke:
 
 ```bash
 cd apps/sidecar
 pnpm exec tsx --eval "(async () => { await import('./src/config/backend-config.ts'); await import('./src/backends/cli-auth.ts'); await import('./src/agents/bootstrap.ts'); await import('./src/routes/agents-config.ts'); await import('./src/routes/agents-sessions.ts'); console.log('sidecar imports ok'); })()"
-
-cd ../orchestrator
-pnpm exec tsx --eval "(async () => { await import('./src/routes/sidecars.ts'); await import('./src/orchestrator/project-manager.ts'); console.log('orchestrator imports ok'); })()"
-```
-
-For driver compliance:
-
-```bash
-cd apps/orchestrator
-RUN_DRIVER_COMPLIANCE_TESTS=true pnpm exec vitest run tests/integration/docker-driver-compliance.test.ts
 ```
 
 If package-wide typecheck is already red for unrelated reasons, do not hide that. State it explicitly and validate the touched path with focused tests.

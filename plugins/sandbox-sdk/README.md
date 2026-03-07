@@ -1,17 +1,20 @@
 # Sandbox SDK
 
-Expert skill for the Tangle dev-container sandbox stack.
+Skill for building applications and services on the Tangle Sandbox SDK.
 
 ## What It Does
 
-Provides guidance for working on the sandbox runtime system:
+Guides you through using the open-source `@tangle-network/sdk*` packages:
 
-- Orchestrator sidecar provisioning
-- Sidecar backend selection and initialization
-- SDK provider plumbing (Codex, Claude Code)
-- Native CLI OAuth auth-file handling inside sandbox
-- Request/config/schema consistency across the stack
+- Configuring and connecting to agent backends (opencode, codex, claude-code, amp, factory-droids)
+- Managing agent sessions (create, fork, execute, stream, shutdown)
+- Consuming SSE event streams and processing agent output
+- Integrating telemetry (Langfuse, OTEL, HTTP sinks)
+- Building new provider adapters using the CLI base class
+- Auth configuration (API key vs OAuth)
+- SDK transports (fetch, WebSocket, Cloudflare Workers)
+- Agent memory, collaboration, and batch execution
 
 ## Usage
 
-Automatically triggers when working on orchestrator sidecars, sidecar backends, SDK provider integration, CLI OAuth credential materialization, or sandbox runtime plumbing.
+Automatically triggers when working with `@tangle-network/sdk`, `@tangle-network/agent-interface`, or building applications that integrate agent backends via the Sandbox SDK.
