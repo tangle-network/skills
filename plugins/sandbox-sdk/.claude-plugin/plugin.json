@@ -1,0 +1,8 @@
+{
+  "name": "sandbox-sdk",
+  "description": "Expert skill for the Tangle dev-container sandbox stack: orchestrator sidecars, backend wiring, SDK provider integration, CLI OAuth, and request/env/config plumbing",
+  "author": {
+    "name": "Tangle Network",
+    "email": "hello@tangle.tools"
+  }
+}
