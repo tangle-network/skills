@@ -8,6 +8,7 @@ description: Use when building applications or services on top of the Tangle San
 Use this skill when building applications or services on top of the open-source Sandbox SDK (`@tangle-network/sdk*`, `@tangle-network/agent-interface`). This covers how to configure and use the SDK to connect to agent backends, manage sessions, stream output, collect telemetry, and build new provider adapters.
 
 This is the public SDK surface. For internal orchestrator/driver/deployment infrastructure, see `sandbox-infra` (internal, not published).
+For building products that consume the SDK (direct-connect streaming, Cloudflare Workers deployment, token auth), see `sandbox-product`.
 
 ## What This Skill Covers
 

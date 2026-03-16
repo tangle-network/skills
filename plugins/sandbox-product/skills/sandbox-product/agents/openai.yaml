@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sandbox Product Builder"
+  short_description: "Build edge-deployed products on Tangle Sandbox SDK"
+  default_prompt: "Use $sandbox-product to build a product that provisions sandboxes, streams agent output to browsers, and deploys on Cloudflare Workers."
