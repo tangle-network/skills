@@ -1,8 +1,0 @@
-{
-  "name": "sandbox-sdk",
-  "description": "Build applications on the Tangle Sandbox SDK — configure backends, manage sessions, stream agent output, integrate telemetry, and build provider adapters",
-  "author": {
-    "name": "Tangle Network",
-    "email": "hello@tangle.tools"
-  }
-}

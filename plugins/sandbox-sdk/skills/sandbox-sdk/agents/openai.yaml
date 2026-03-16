@@ -1,4 +1,0 @@
-interface:
-  display_name: "Sandbox SDK"
-  short_description: "Build on the dev-container sandbox stack"
-  default_prompt: "Use $sandbox-sdk to implement or debug sidecar, orchestrator, backend, or CLI OAuth integration work in agent-dev-container."
