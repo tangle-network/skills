@@ -1,0 +1,125 @@
+{
+  "name": "tangle-network-skills",
+  "owner": {
+    "name": "Tangle Network",
+    "email": "drew@tangle.tools"
+  },
+  "metadata": {
+    "description": "Claude Code plugin marketplace for Tangle Network development skills",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "tangle-blueprint-expert",
+      "source": "./plugins/tangle-blueprint-expert",
+      "description": "Expert workflow for designing, implementing, testing, and documenting Tangle Blueprints with correct hierarchy, tenancy/auth modeling, and production-like CLI validation",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "blueprint",
+        "sdk",
+        "rust",
+        "workflow",
+        "production"
+      ]
+    },
+    {
+      "name": "sandbox-blueprint",
+      "source": "./plugins/sandbox-blueprint",
+      "description": "Build sandbox-style Tangle Blueprints — container/VM provisioning, lifecycle management, operator API, session auth, secret provisioning, sidecar integration, tiered GC, and BSM contracts",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "blueprint",
+        "sandbox",
+        "infrastructure",
+        "provisioning",
+        "lifecycle"
+      ]
+    },
+    {
+      "name": "sandbox-product",
+      "source": "./plugins/sandbox-product",
+      "description": "Build products on the Tangle Sandbox SDK — direct-connect streaming, token auth, Cloudflare Workers deployment, and edge-first architecture patterns",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "sandbox",
+        "sdk",
+        "cloudflare",
+        "streaming",
+        "edge"
+      ]
+    },
+    {
+      "name": "blueprint-frontend",
+      "source": "./plugins/blueprint-frontend",
+      "description": "Build React frontends for Tangle Blueprints — job submission, operator discovery, service provisioning, session auth, Web3 providers, and @tangle-network/blueprint-ui integration",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "frontend",
+        "react",
+        "web3",
+        "ui",
+        "blueprint"
+      ]
+    },
+    {
+      "name": "tangle-branded-designer",
+      "source": "./plugins/tangle-branded-designer",
+      "description": "Tangle Network brand design system — colors, typography, layout patterns, component aesthetics, and visual language for building on-brand applications",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "design",
+        "brand",
+        "ui",
+        "theme",
+        "styling"
+      ]
+    },
+    {
+      "name": "plan-mega-review",
+      "source": "./plugins/plan-mega-review",
+      "description": "Garry Tan's Mega Plan Review Mode — three review modes (Scope Expansion, Hold Scope, Scope Reduction) with 10 review sections and STOP gates",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "planning",
+        "review",
+        "workflow",
+        "methodology"
+      ]
+    },
+    {
+      "name": "soc2-audit",
+      "source": "./plugins/soc2-audit",
+      "description": "SOC2 security audit — infrastructure and codebase scanning, Trust Service Criteria mapping, and tiered remediation checklist for compliance readiness",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "security",
+        "audit",
+        "compliance",
+        "soc2",
+        "infrastructure"
+      ]
+    }
+  ]
+}
