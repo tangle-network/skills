@@ -14,6 +14,10 @@ Use this skill for any request that involves:
 - production-like deploy/request/approve/job testing with `cargo tangle`
 - blueprint UI flows for provisioning/service/jobs
 - production runtime patterns (operator API, auth, secrets, circuit breakers)
+- GPU-accelerated blueprints (detection, BSM validation, remote provisioning)
+- shielded/private payment integration (Credit Mode, RLN Mode, VAnchor)
+- pricing config and RFQ quote flows
+- subprocess lifecycle management (vLLM, Ollama, inference engines)
 
 ## Required Reading Order
 
@@ -23,10 +27,12 @@ Use this skill for any request that involves:
 
 **Implementation references (read as needed):**
 3. `references/TANGLE-BLUEPRINT-SDK-PATTERNS.md` -- Rust SDK programming model: Router, extractors, runner wiring, main.rs boilerplate, testing
-4. `references/TANGLE-BLUEPRINT-BSM-HOOKS.md` -- All 30+ Solidity BSM hooks with signatures, job types, payment models, slashing, membership
-5. `references/TANGLE-BLUEPRINT-PRODUCTION-PATTERNS.md` -- Operator API, BPM bridge, session auth, secrets, circuit breakers, reaper/GC, billing, TEE
-6. `references/TANGLE-BLUEPRINT-CLI-RUNBOOK.md` -- Complete CLI command reference: scaffold, deploy, register, service lifecycle, jobs, operator, delegator
-7. `references/TANGLE-BLUEPRINT-LEARNINGS.md` -- Do/don't patterns, failure classes, validation ladder
+4. `references/TANGLE-BLUEPRINT-REPO-STRUCTURE.md` -- Canonical bin/lib repo layout, workspace patterns, contracts/scripts/config organization
+5. `references/TANGLE-BLUEPRINT-BSM-HOOKS.md` -- All 30+ Solidity BSM hooks with signatures, job types, payment models, slashing, membership
+6. `references/TANGLE-BLUEPRINT-PRODUCTION-PATTERNS.md` -- Operator API, BPM bridge, session auth, secrets, circuit breakers, reaper/GC, billing, TEE
+7. `references/TANGLE-BLUEPRINT-ADVANCED-PATTERNS.md` -- GPU provisioning, shielded payments (Credit/RLN), pricing TOML/RFQ, remote providers, subprocess lifecycle
+8. `references/TANGLE-BLUEPRINT-CLI-RUNBOOK.md` -- Complete CLI command reference: scaffold, deploy, register, service lifecycle, jobs, operator, delegator
+9. `references/TANGLE-BLUEPRINT-LEARNINGS.md` -- Do/don't patterns, failure classes, validation ladder
 
 Do not skip the overview. It defines the protocol and business model semantics.
 
@@ -39,6 +45,8 @@ Reference codebases:
 - [tangle-network/tnt-core](https://github.com/tangle-network/tnt-core) -- Core Tangle protocol contracts (BSM hooks, staking, payments)
 - [tangle-network/ai-agent-sandbox-blueprint](https://github.com/tangle-network/ai-agent-sandbox-blueprint) -- Production blueprint example
 - [tangle-network/ai-trading-blueprint](https://github.com/tangle-network/ai-trading-blueprint) -- Production blueprint example
+- [vllm-inference-blueprint](~/code/vllm-inference-blueprint) -- GPU inference blueprint with shielded payments
+- [shielded-payment-gateway](/tmp/shielded-payment-gateway) -- Privacy-preserving payment contracts + SDK
 
 ## Core Contract (Never Violate)
 
