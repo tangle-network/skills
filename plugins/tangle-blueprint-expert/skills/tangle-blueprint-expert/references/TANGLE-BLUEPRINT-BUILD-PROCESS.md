@@ -4,6 +4,10 @@ Use this process **every time** Drew asks to build a Tangle Blueprint.
 
 Read [TANGLE-BLUEPRINT-OVERVIEW.md](./TANGLE-BLUEPRINT-OVERVIEW.md) first for protocol vision, hierarchy, and economic model context.
 
+Two companion disciplines run alongside this process:
+- [TANGLE-BLUEPRINT-HONESTY-DISCIPLINE.md](./TANGLE-BLUEPRINT-HONESTY-DISCIPLINE.md) for `LIMITS.md`, the pre-complete gate, and paranoid defaults on security-adjacent code.
+- [TANGLE-BLUEPRINT-META-REVIEW.md](./TANGLE-BLUEPRINT-META-REVIEW.md) for the continuous adversarial pass (Phase 3.5) and the pre-v0.1 persona-dispatch synthesis (Phase 6).
+
 ## Phase -1 — Scaffold First (Mandatory for New Blueprints)
 
 For any net-new blueprint repo, first generate from the official scaffold CLI:
@@ -125,6 +129,8 @@ Do not scaffold generic web service architecture as a substitute.
    - keep served directory (for example `control-plane-ui/`) as generated output only
    - provide explicit build-sync command (for example `pnpm run build:embedded`)
    - ensure HTTP routes serve split chunks (`/assets/*`) rather than forcing monolithic bundles
+10. Every capability commit adds at least one `docs/LIMITS.md` entry — either for the new capability or for an adjacent claim it now affects. See [TANGLE-BLUEPRINT-HONESTY-DISCIPLINE.md](./TANGLE-BLUEPRINT-HONESTY-DISCIPLINE.md).
+11. Security-adjacent code (auth, crypto, storage, transport) defaults to the paranoid primitive; ergonomic primitives are opt-in via explicit env var or builder call.
 
 ---
 
@@ -162,6 +168,32 @@ Minimum validation before saying “done”:
 
 No validation evidence = not done.
 
+Before declaring the feature complete, the **pre-complete gate** from
+[TANGLE-BLUEPRINT-HONESTY-DISCIPLINE.md](./TANGLE-BLUEPRINT-HONESTY-DISCIPLINE.md)
+must pass all five checks (test coverage of doc claims, crypto key
+lifecycle, ≥2-process test for distributed claims, named owner on
+every "deferred," `deploy-local.sh` still runs end-to-end).
+
+---
+
+## Phase 3.5 — Adversarial pass (continuous, per significant commit)
+
+After every commit that adds a job / auth method / storage primitive /
+crypto operation, or that touches files matching
+`auth|crypto|jwt|secret|key|hash|sign|encrypt|ipfs|s3|http|billing|settle`,
+dispatch a skeptic sub-agent on the diff. If the diff touches
+security-adjacent surfaces, also dispatch a security sub-agent. See
+[TANGLE-BLUEPRINT-META-REVIEW.md](./TANGLE-BLUEPRINT-META-REVIEW.md)
+for the prompt templates and handling rules.
+
+Each finding is either fixed in the next commit or accepted in
+`docs/LIMITS.md` with reasoning, owner, and trigger. Silent dismissal
+is not allowed.
+
+This phase runs **per commit**, not at the end. Running persona /
+adversarial review only at the end catches issues post-merge that
+would have been caught pre-merge with continuous dispatch.
+
 ---
 
 ## Phase 4 — PR discipline
@@ -192,6 +224,24 @@ Every failure must produce a process improvement.
 
 ---
 
+## Phase 6 — Meta-review synthesis (pre-v0.1 / pre-mainnet)
+
+Before tagging `v0.1`, promoting from testnet to mainnet, publishing
+as a reference implementation, or writing "production-ready" in
+`README.md`, run the five-persona synthesis dispatch and score the
+blueprint against the 10-point scorecard from
+[TANGLE-BLUEPRINT-META-REVIEW.md](./TANGLE-BLUEPRINT-META-REVIEW.md).
+
+Output lands in `research/judgments/` (one file per persona),
+`research/synthesis/meta-review.md` (the aggregate verdict), and
+the tier assignment (`REFERENCE-IMPLEMENTATION` / `PRODUCTION-READY` /
+`EXPERIMENTAL` / `TOYLIKE`) goes into `README.md`.
+
+No silent tier upgrades. The `README.md` tier reflects the most recent
+synthesis pass.
+
+---
+
 ## Failure Patterns to Guard Against
 - Building JS scaffold instead of blueprint-sdk Rust implementation
 - Treating "blueprint" as generic backend service
@@ -219,5 +269,10 @@ Use coding agents for implementation, but enforce this process as manager:
 - [ ] Rust + blueprint-sdk wiring present (not just docs claims)
 - [ ] Jobs are mutations only; read-only paths are query/off-chain
 - [ ] Validation evidence is attached (`cargo check` minimum)
+- [ ] Pre-complete gate passed (honesty discipline ref)
+- [ ] `docs/LIMITS.md` has at least one new entry per capability commit
+- [ ] Paranoid defaults on all security-adjacent surfaces
+- [ ] Per-commit adversarial pass findings were fixed or accepted in LIMITS (Phase 3.5)
 - [ ] Branch is PR-ready with scope/non-goals documented
 - [ ] Learning entry appended to `docs/TANGLE-BLUEPRINT-LEARNINGS.md`
+- [ ] If promoting to `v0.1` / mainnet: Phase 6 synthesis completed and tier assigned in README
