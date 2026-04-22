@@ -27,6 +27,22 @@
       ]
     },
     {
+      "name": "tangle-blueprint-innovate",
+      "source": "./plugins/tangle-blueprint-innovate",
+      "description": "Idea-to-spec conversation skill for Tangle Blueprints. Research-driven market scan across GitHub/HN/Product Hunt/arxiv/Twitter, customer-archetype lock, multi-operator-by-default design, BSM primitive selection, OSS-wrapping patterns, and in-line boringness test. Produces a 1-page spec ready for handoff to tangle-blueprint-expert",
+      "version": "0.1.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "blueprint",
+        "innovation",
+        "ideation",
+        "research",
+        "spec"
+      ]
+    },
+    {
       "name": "sandbox-blueprint",
       "source": "./plugins/sandbox-blueprint",
       "description": "Build sandbox-style Tangle Blueprints — container/VM provisioning, lifecycle management, operator API, session auth, secret provisioning, sidecar integration, tiered GC, and BSM contracts",
