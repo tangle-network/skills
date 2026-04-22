@@ -23,7 +23,8 @@ Use this skill for any request that involves:
 
 **Conceptual foundation (read first):**
 1. `references/TANGLE-BLUEPRINT-OVERVIEW.md` -- Protocol vision, hierarchy, tenancy, auth
-2. `references/TANGLE-BLUEPRINT-BUILD-PROCESS.md` -- 5-phase build process and validation gates
+2. `references/TANGLE-BLUEPRINT-BPM-VS-INSTANCE.md` -- Blueprint Manager (SDK-provided) vs Blueprint Instance (author-written) layer boundary, billing/lifecycle who-does-what, adapter anti-pattern
+3. `references/TANGLE-BLUEPRINT-BUILD-PROCESS.md` -- 5-phase build process and validation gates
 
 **Implementation references (read as needed):**
 3. `references/TANGLE-BLUEPRINT-SDK-PATTERNS.md` -- Rust SDK programming model: Router, extractors, runner wiring, main.rs boilerplate, testing
