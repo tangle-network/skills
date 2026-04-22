@@ -34,6 +34,10 @@ Use this skill for any request that involves:
 8. `references/TANGLE-BLUEPRINT-CLI-RUNBOOK.md` -- Complete CLI command reference: scaffold, deploy, register, service lifecycle, jobs, operator, delegator
 9. `references/TANGLE-BLUEPRINT-LEARNINGS.md` -- Do/don't patterns, failure classes, validation ladder
 
+**Discipline references (read before PR / before mainnet):**
+10. `references/TANGLE-BLUEPRINT-HONESTY-DISCIPLINE.md` -- `LIMITS.md` pattern, claim-with-counterweight rule, pre-complete gate, paranoid-default rule for security-adjacent code, stub discipline
+11. `references/TANGLE-BLUEPRINT-META-REVIEW.md` -- Continuous adversarial pass (Phase 3.5), persona-dispatch synthesis (Phase 6), 10-point scorecard + tier mapping, operator-vs-agent division of labor
+
 Do not skip the overview. It defines the protocol and business model semantics.
 
 ## Source of Truth
@@ -125,6 +129,10 @@ If these are mixed, stop and correct architecture first.
 6. Writing a BSM without understanding which hooks fire for which lifecycle events.
 7. Building an operator binary without an operator API for read-only operations.
 8. Skipping session auth on off-chain endpoints.
+9. Shipping a claim in README without a paired `docs/LIMITS.md` entry (see honesty discipline ref).
+10. Declaring a feature "done" without running the pre-complete gate (see honesty discipline ref).
+11. Defaulting security-adjacent code (JWT, encryption, transport) to the ergonomic primitive instead of the paranoid one (see honesty discipline ref).
+12. Running persona / adversarial review only at the end, not continuously per commit (see meta-review ref).
 
 ## Output Style
 
