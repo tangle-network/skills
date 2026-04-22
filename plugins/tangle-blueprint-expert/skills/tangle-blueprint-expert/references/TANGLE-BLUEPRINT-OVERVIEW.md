@@ -27,6 +27,7 @@ Always distinguish these layers:
 2. **Operator registration**
    - operators opt into specific blueprints
    - advertises runtime capability and availability for that template
+   - see [TANGLE-BLUEPRINT-BPM-VS-INSTANCE.md](./TANGLE-BLUEPRINT-BPM-VS-INSTANCE.md) for BPM (the operator-side SDK harness that handles registration / provisioning / payment settlement / slashing on behalf of author) vs the Blueprint Instance (the author-written product code running per service request)
 3. **Service request**
    - customer chooses request parameters and a subset of registered operators
 4. **Service instance**
