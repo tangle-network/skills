@@ -45,7 +45,7 @@
     {
       "name": "sandbox-blueprint",
       "source": "./plugins/sandbox-blueprint",
-      "description": "Build sandbox-style Tangle Blueprints — container/VM provisioning, lifecycle management, operator API, session auth, secret provisioning, sidecar integration, tiered GC, and BSM contracts",
+      "description": "Build sandbox-style Tangle Blueprints \u2014 container/VM provisioning, lifecycle management, operator API, session auth, secret provisioning, sidecar integration, tiered GC, and BSM contracts",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -61,7 +61,7 @@
     {
       "name": "sandbox-product",
       "source": "./plugins/sandbox-product",
-      "description": "Build products on the Tangle Sandbox SDK — direct-connect streaming, token auth, Cloudflare Workers deployment, and edge-first architecture patterns",
+      "description": "Build products on the Tangle Sandbox SDK \u2014 direct-connect streaming, token auth, Cloudflare Workers deployment, and edge-first architecture patterns",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -77,7 +77,7 @@
     {
       "name": "blueprint-frontend",
       "source": "./plugins/blueprint-frontend",
-      "description": "Build React frontends for Tangle Blueprints — job submission, operator discovery, service provisioning, session auth, Web3 providers, and @tangle-network/blueprint-ui integration",
+      "description": "Build React frontends for Tangle Blueprints \u2014 job submission, operator discovery, service provisioning, session auth, Web3 providers, and @tangle-network/blueprint-ui integration",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -93,7 +93,7 @@
     {
       "name": "tangle-branded-designer",
       "source": "./plugins/tangle-branded-designer",
-      "description": "Tangle Network brand design system — colors, typography, layout patterns, component aesthetics, and visual language for building on-brand applications",
+      "description": "Tangle Network brand design system \u2014 colors, typography, layout patterns, component aesthetics, and visual language for building on-brand applications",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -109,7 +109,7 @@
     {
       "name": "plan-mega-review",
       "source": "./plugins/plan-mega-review",
-      "description": "Garry Tan's Mega Plan Review Mode — three review modes (Scope Expansion, Hold Scope, Scope Reduction) with 10 review sections and STOP gates",
+      "description": "Garry Tan's Mega Plan Review Mode \u2014 three review modes (Scope Expansion, Hold Scope, Scope Reduction) with 10 review sections and STOP gates",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -124,7 +124,7 @@
     {
       "name": "soc2-audit",
       "source": "./plugins/soc2-audit",
-      "description": "SOC2 security audit — infrastructure and codebase scanning, Trust Service Criteria mapping, and tiered remediation checklist for compliance readiness",
+      "description": "SOC2 security audit \u2014 infrastructure and codebase scanning, Trust Service Criteria mapping, and tiered remediation checklist for compliance readiness",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -135,6 +135,37 @@
         "compliance",
         "soc2",
         "infrastructure"
+      ]
+    },
+    {
+      "name": "agent-eval-adoption",
+      "source": "./plugins/agent-eval-adoption",
+      "description": "Adopt @tangle-network/agent-eval + agent-runtime in a product: defineAgent manifest, runLoop loops, MCP delegation, ProductionTraceSink, scorecard + ship-gate CI, held-out promotion, cross-profile matrix, analyst-loop, assertRealBackend.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "adoption",
+        "eval",
+        "agent-runtime",
+        "sdk"
+      ]
+    },
+    {
+      "name": "agent-stack-adoption",
+      "source": "./plugins/agent-stack-adoption",
+      "description": "Adopt the self-improving Tangle agent stack (@tangle-network/{agent-runtime,agent-knowledge,agent-eval,sandbox,tcloud}) end-to-end across a 9-phase pipeline.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "adoption",
+        "agent-stack",
+        "sandbox",
+        "tcloud",
+        "sdk"
       ]
     }
   ]
