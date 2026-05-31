@@ -1,6 +1,6 @@
 ---
 name: agent-eval-adoption
-description: "Substrate-primitive reference for adopting @tangle-network/agent-eval (0.50.x) + @tangle-network/agent-runtime (0.28.x) in a product. Covers defineAgent manifest, runLoop driven loops (refine / fanout-vote), MCP delegation tools, ProductionTraceSink, scorecard + ship-gate CI, held-out promotion, cross-profile matrix benchmarks, analyst-loop, assertRealBackend Phase A guard. PAIRS WITH: agent-stack-adoption (9-phase pipeline shape that consumes these primitives), agent-eval (substrate footgun bible + canonical product-agent file layout), eval-agent (LLM-as-judge rubric generation specifically)."
+description: "Substrate-primitive reference for adopting @tangle-network/agent-eval (0.50.x+) + @tangle-network/agent-runtime (0.33.x+) in a product. Covers defineAgent manifest, runLoop driven loops + topology drivers (refine / fanout-vote / dynamic agent-authored topology via createDynamicDriver + createSandboxPlanner), identity-gated prompt-surface optimization (optimizePrompt), MCP delegation tools, ProductionTraceSink, scorecard + ship-gate CI, held-out promotion, cross-profile matrix benchmarks, analyst-loop, assertRealBackend Phase A guard. PAIRS WITH: agent-stack-adoption (9-phase pipeline shape that consumes these primitives), agent-eval (substrate footgun bible + canonical product-agent file layout), eval-agent (LLM-as-judge rubric generation specifically)."
 ---
 
 # Agent Eval Adoption — substrate primitives for product wiring
@@ -129,25 +129,37 @@ construction. The optional `@tangle-network/agent-knowledge` peer ships a
 `multiHarnessResearcherFanout` consumers can adapt; the bin (`agent-runtime-mcp`)
 auto-wires it when the peer is installed.
 
-### Topologies — Refine + FanoutVote shipped; others deferred
+### Topologies — Refine, FanoutVote, Dynamic (shipped)
 
 `@tangle-network/agent-runtime/loops/drivers/`:
 
-- **`createRefineDriver({ maxIterations })`** — single-task-per-iteration,
-  feed the prior output back into the prompt, stop on validator success or
-  iteration cap. Use for: incremental patches, document revision, anything
-  monotonic.
-- **`createFanoutVoteDriver({ variants, scoreFn })`** — N tasks per
-  iteration in parallel, then `scoreFanoutVoteIterations` picks the winner.
-  Use for: multi-harness coder fanout (`multiHarnessCoderFanout` is the
-  shipped composition), redundant research with disagreement detection.
+- **`createRefineDriver({ maxIterations?, refineTask? })`** —
+  single-task-per-iteration, feed the prior output back into the prompt, stop on
+  validator success or iteration cap. Use for: incremental patches, document
+  revision, anything monotonic.
+- **`createFanoutVoteDriver({ n, selector? })`** — N tasks per iteration in
+  parallel, then the selector (default: highest valid score;
+  `scoreFanoutVoteIterations` exposes the scored view) picks the winner. Use for:
+  multi-harness coder fanout (`multiHarnessCoderFanout` is the shipped
+  composition), redundant research with disagreement detection.
+- **`createDynamicDriver({ planner, maxIterations?, maxFanout? })`** (agent-runtime
+  0.33.0+) — **the agent authors the topology.** An injected `TopologyPlanner`
+  emits one `TopologyMove` per round (`{kind:'refine',task}` |
+  `{kind:'fanout',tasks}` | `{kind:'stop'}`); `plan`/`decide` map it onto the
+  kernel. The planner is invoked once per round in `plan()`; `decide()` reads the
+  cached move so an LLM planner is never double-called. Wire the planner to a
+  harness with `createSandboxPlanner({ client, profile, decodeTask })` (it decodes
+  a JSON-envelope move; a missing/unknown move throws `PlannerError`). Use when
+  the right shape is task-dependent — scout-then-fanout, refine-then-branch, or
+  **Decompose** (planner splits task → subtasks → re-aggregate), which this
+  subsumes. Topology stays orthogonal to harness: the planner names no backend;
+  the kernel round-robins `agentRuns[]` to place each branch.
 
-Deferred (NOT shipped — do not pretend they exist in adoption code):
-**Council** (judge-of-judges over fanout outputs), **Decompose** (planner
-splits task → subtasks → re-aggregate), **Pipeline** (typed handoff
-between specialist agents). When a product reaches for one, build a custom
-`Driver` against the kernel's interface (`src/loops/types.ts:Driver`); do
-NOT vendor a forked kernel.
+Still deferred (NOT shipped — do not pretend they exist): **Council**
+(judge-of-judges over fanout outputs) and **Pipeline** (typed handoff between
+specialist agents). When a product reaches for one, build a custom `Driver`
+against the kernel's interface (`src/loops/types.ts:Driver`); do NOT vendor a
+forked kernel.
 
 ### Gotchas
 
@@ -162,6 +174,50 @@ NOT vendor a forked kernel.
   the same task, pass two specs and read winner index from `result.winner`.
 - The output adapter MUST return a typed value or throw. A `null` /
   `undefined` adapter return silently drops the iteration from scoring.
+
+### Prompt-surface optimization — `optimizePrompt` (identity-gated)
+
+`@tangle-network/agent-runtime/improvement` (0.33.0+). The text-surface entry
+point onto agent-eval's `runImprovementLoop` — sibling to `improvementDriver`
+(the code/worktree path). Use it to optimize **any** prompt surface (a system
+prompt, a planner prompt, a judge rubric) without hand-wiring the loop.
+
+```ts
+import { optimizePrompt } from '@tangle-network/agent-runtime/improvement'
+const { prompt, improved, decision, delta } = await optimizePrompt({
+  baselinePrompt: CURRENT_SYSTEM_PROMPT,
+  runWithPrompt: (prompt, scenario, ctx) => runYourThing(prompt, scenario, ctx),
+  scenarios, holdoutScenarios, judges, runDir,
+  reflection: { llm, model: REFLECTION_MODEL },   // builds the default gepaDriver
+  // gate? — defaults to heldOutGate; pass defaultProductionGate for hardening
+})
+// assign `result.prompt` unconditionally: it's the BASELINE until a candidate wins
+```
+
+**Identity-gated by construction** — the value, not a footnote. The loop runs
+evals, proposes candidates, and the held-out gate compares candidate vs baseline;
+`result.prompt` is the baseline UNLESS `decision === 'ship'`. So registering a
+surface for optimization can never regress it — it only improves when held-out
+data earns it. Wiring a prompt up is therefore always safe.
+
+This is the reusable recipe for "build a `[SURFACE]`-prompt optimization target":
+extract the prompt to a constant surface → scenarios from the surface's own
+domain → judge dimensions that score its output → `runWithPrompt` →
+`gepaDriver` + held-out gate. Gotchas, learned the hard way:
+
+- **`gepaDriver` mutates TEXT only**, and its only structural guard is `##` H2
+  headings (`preserveSections`) + `maxSentenceEdits`. Make load-bearing sections
+  real `##` headings; treat the output schema/contract as fixed code GEPA never
+  touches. It does NOT optimize `CodeSurface`/knowledge — those are the
+  `improvementDriver` / agent-knowledge paths.
+- **Scenarios must be domain-real** — derive them from the surface's own traces /
+  ground truth, never an unrelated corpus. Cross-domain examples are noise that
+  the gate will (correctly) refuse to promote on.
+- **Extend, don't fork.** If the product already wires `runImprovementLoop` /
+  `runProductionLoop` (section 7) for one surface, add the new surface as another
+  target in that harness — do NOT bolt on a parallel `optimizePrompt` beside it.
+- `runWithPrompt` is the only domain seam; report cost via `ctx.cost` inside it
+  so `assertRealBackend` (section 4) sees real activity.
 
 ## MCP delegation tools — `@tangle-network/agent-runtime/mcp`
 

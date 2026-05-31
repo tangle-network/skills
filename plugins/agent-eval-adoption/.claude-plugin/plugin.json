@@ -1,6 +1,6 @@
 {
   "name": "agent-eval-adoption",
-  "description": "Adopt @tangle-network/agent-eval + @tangle-network/agent-runtime in a product: defineAgent manifest, runLoop loops, MCP delegation tools, ProductionTraceSink, scorecard + ship-gate CI, held-out promotion, cross-profile matrix benchmarks, analyst-loop, assertRealBackend Phase A guard.",
+  "description": "Adopt @tangle-network/agent-eval + @tangle-network/agent-runtime in a product: defineAgent manifest, runLoop loops + topology drivers (refine / fanout-vote / dynamic agent-authored), identity-gated prompt-surface optimization (optimizePrompt), MCP delegation tools, ProductionTraceSink, scorecard + ship-gate CI, held-out promotion, cross-profile matrix benchmarks, analyst-loop, assertRealBackend Phase A guard.",
   "author": {
     "name": "Tangle Network",
     "email": "hello@tangle.tools"
