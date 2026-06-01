@@ -38,6 +38,7 @@ Or browse and install:
 | [site-clone](./plugins/site-clone/) | Clone or migrate websites into self-hosted frontend frameworks using ripped CSS, fonts, assets, DOM structure, and screenshot verification |
 | [soc2-audit](./plugins/soc2-audit/) | Run SOC 2 readiness audits across infrastructure, code security, Trust Service Criteria mapping, and remediation plans |
 | [tangle-blueprint-expert](./plugins/tangle-blueprint-expert/) | Expert workflow for building Tangle Blueprints -- SDK patterns, BSM hooks, CLI lifecycle, production runtime |
+| [tangle-blueprint-iframe-app](./plugins/tangle-blueprint-iframe-app/) | Build hosted blueprint product UIs that embed safely in Tangle Cloud with iframe mode, parent-bridged wallet flows, manifests, and frame headers |
 | [tangle-blueprint-innovate](./plugins/tangle-blueprint-innovate/) | Turn blueprint ideas, categories, or half-built repos into research-grounded, multi-operator specs ready for execution |
 | [tangle-branded-designer](./plugins/tangle-branded-designer/) | Tangle brand design system and visual guidelines |
 
