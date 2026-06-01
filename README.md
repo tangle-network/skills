@@ -15,6 +15,7 @@ Then install individual plugins:
 ```
 /plugin install tangle-blueprint-expert@tangle-network-skills
 /plugin install sandbox-product@tangle-network-skills
+/plugin install tangle-branded-designer@tangle-network-skills
 ```
 
 Or browse and install:
@@ -28,14 +29,24 @@ Or browse and install:
 
 | Plugin | Description |
 |--------|-------------|
-| [sandbox-product](./plugins/sandbox-product/) | Build products on the Sandbox SDK -- direct-connect streaming, token auth, Cloudflare Workers deployment |
-| [sandbox-blueprint](./plugins/sandbox-blueprint/) | Build sandbox-style blueprints -- provisioning, lifecycle, operator API, auth, secrets, TEE, GC |
-| [tangle-blueprint-expert](./plugins/tangle-blueprint-expert/) | Expert workflow for building Tangle Blueprints -- SDK patterns, BSM hooks, CLI lifecycle, production runtime |
+| [agent-eval-adoption](./plugins/agent-eval-adoption/) | Adopt `@tangle-network/agent-eval` and `@tangle-network/agent-runtime` in products with real trace capture, scorecards, promotion gates, and prompt optimization |
+| [agent-stack-adoption](./plugins/agent-stack-adoption/) | Adopt the full self-improving Tangle agent stack across runtime, knowledge, evals, sandbox, tcloud, matrix tests, and CI |
 | [blueprint-frontend](./plugins/blueprint-frontend/) | Build React frontends for blueprints -- job submission, operator discovery, session auth, agent chat/terminal |
-| [tangle-branded-designer](./plugins/tangle-branded-designer/) | Tangle brand design system and visual guidelines |
 | [plan-mega-review](./plugins/plan-mega-review/) | Garry Tan's Mega Plan Review Mode with three scope modes and 10-section review gates |
+| [sandbox-blueprint](./plugins/sandbox-blueprint/) | Build sandbox-style blueprints -- provisioning, lifecycle, operator API, auth, secrets, TEE, GC |
+| [sandbox-product](./plugins/sandbox-product/) | Build products on the Sandbox SDK -- direct-connect streaming, token auth, Cloudflare Workers deployment |
+| [site-clone](./plugins/site-clone/) | Clone or migrate websites into self-hosted frontend frameworks using ripped CSS, fonts, assets, DOM structure, and screenshot verification |
+| [soc2-audit](./plugins/soc2-audit/) | Run SOC 2 readiness audits across infrastructure, code security, Trust Service Criteria mapping, and remediation plans |
+| [tangle-blueprint-expert](./plugins/tangle-blueprint-expert/) | Expert workflow for building Tangle Blueprints -- SDK patterns, BSM hooks, CLI lifecycle, production runtime |
+| [tangle-blueprint-iframe-app](./plugins/tangle-blueprint-iframe-app/) | Build hosted blueprint product UIs that embed safely in Tangle Cloud with iframe mode, parent-bridged wallet flows, manifests, and frame headers |
+| [tangle-blueprint-innovate](./plugins/tangle-blueprint-innovate/) | Turn blueprint ideas, categories, or half-built repos into research-grounded, multi-operator specs ready for execution |
+| [tangle-branded-designer](./plugins/tangle-branded-designer/) | Tangle brand design system and visual guidelines |
 
 For internal skills (sidecar internals, provider architecture), see [tangle-network/skills-internal](https://github.com/tangle-network/skills-internal) (private).
+
+## Public vs. Internal
+
+This repository is for portable public workflows: public SDK usage, blueprint architecture, frontend patterns, product UI guidance, and synthetic examples. Keep private infrastructure, credentials, customer data, GTM source material, live account IDs, local hostnames, raw traces, and unpublished product posture in `tangle-network/skills-internal` or private project docs.
 
 ## Manual Installation
 

@@ -1,0 +1,8 @@
+{
+  "name": "site-clone",
+  "description": "Clone or migrate websites from Webflow, WordPress, Squarespace, and other platforms into self-hosted Astro, Next.js, or Vite apps with pixel-focused CSS, assets, fonts, DOM structure, screenshots, and verification.",
+  "author": {
+    "name": "Tangle Network",
+    "email": "hello@tangle.tools"
+  }
+}

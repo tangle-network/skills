@@ -1,6 +1,11 @@
+---
+name: tangle-design-system
+description: Tangle product UI design tokens and component patterns. Use with sandbox-product when a Sandbox SDK product needs Tangle-branded colors, typography, spacing, radii, effects, cards, buttons, code blocks, and responsive product UI styling.
+---
+
 # Tangle Design System
 
-Design tokens and component patterns extracted from the Tangle marketing site (~/company/website-migration). Use this as the canonical reference for all Tangle-branded products.
+Design tokens and component patterns extracted from Tangle's public product and marketing surfaces. Use this as a focused companion reference when building Tangle-branded Sandbox products.
 
 ## Colors
 
@@ -226,7 +231,7 @@ Mobile:   <768px (single panel, everything stacked)
 ```
 
 ## Reference Files
-- Global CSS: ~/company/website-migration/tangle-website/src/styles/global.css
-- Fonts: ~/company/website-migration/tangle-website/src/styles/fonts.css
-- Components: ~/company/website-migration/tangle-website/src/components/ui/
-- Brand assets: ~/company/website-migration/tangle-website/public/brand/
+- Global CSS: `tangle-network/tangle-website:src/styles/global.css`
+- Fonts: `tangle-network/tangle-website:src/styles/fonts.css`
+- Components: `tangle-network/tangle-website:src/components/ui/`
+- Brand assets: `tangle-network/tangle-website:public/brand/`

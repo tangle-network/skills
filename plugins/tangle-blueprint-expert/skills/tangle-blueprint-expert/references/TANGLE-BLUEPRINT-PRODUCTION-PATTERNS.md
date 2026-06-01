@@ -133,7 +133,7 @@ async fn list_sandboxes(SessionAuth(address): SessionAuth) -> impl IntoResponse 
 ```
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/operator_api.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/operator_api.rs`
 
 ---
 
@@ -227,7 +227,7 @@ tokio::spawn(axum::serve(listener, router.into_make_service_with_connect_info::<
 | `OPERATOR_API_PORT` | Preferred port for operator API | `9090` |
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/ai-agent-sandbox-blueprint-bin/src/main.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:ai-agent-sandbox-blueprint-bin/src/main.rs`
 
 ---
 
@@ -365,7 +365,7 @@ impl<S: Send + Sync> FromRequestParts<S> for SessionAuth {
 - **Validation:** First checks in-memory store (fast), then falls back to PASETO decryption (survives restart if `SESSION_AUTH_SECRET` is set).
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/session_auth.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/session_auth.rs`
 
 ---
 
@@ -442,8 +442,8 @@ pub fn merge_env_json(base: &str, user: &str) -> String {
 ```
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/secret_provisioning.rs`
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/runtime.rs` (merge_env_json, recreate_sidecar_with_env)
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/secret_provisioning.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/runtime.rs` (merge_env_json, recreate_sidecar_with_env)
 
 ---
 
@@ -538,7 +538,7 @@ circuit_breaker::clear(sandbox_id);
 Periodic GC removes entries older than 2x cooldown to prevent unbounded memory growth.
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/circuit_breaker.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/circuit_breaker.rs`
 
 ---
 
@@ -621,8 +621,8 @@ tokio::spawn(async move {
 ```
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/reaper.rs`
-- `/home/drew/code/ai-agent-sandbox-blueprint/ai-agent-sandbox-blueprint-bin/src/main.rs` (spawn logic)
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/reaper.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:ai-agent-sandbox-blueprint-bin/src/main.rs` (spawn logic)
 
 ---
 
@@ -704,8 +704,8 @@ Properties:
 - Migration path: unencrypted values pass through `unseal_field` unchanged (with a warning), and are re-encrypted on next write.
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/store.rs`
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/runtime.rs` (seal/unseal)
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/store.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/runtime.rs` (seal/unseal)
 
 ---
 
@@ -779,8 +779,8 @@ sandbox-runtime = { path = "../../ai-agent-sandbox-blueprint/sandbox-runtime", f
 - Binary wiring (which producers, consumers, features to enable)
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/Cargo.toml` (workspace)
-- `/home/drew/code/ai-trading-blueprints/Cargo.toml` (cross-repo consumer)
+- `tangle-network/ai-agent-sandbox-blueprint:Cargo.toml` (workspace)
+- `tangle-network/ai-trading-blueprint:Cargo.toml` (cross-repo consumer)
 
 ---
 
@@ -857,8 +857,8 @@ if let Some(record) = get_instance_sandbox()? {
 ```
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/ai-agent-instance-blueprint-lib/src/auto_provision.rs`
-- `/home/drew/code/ai-agent-sandbox-blueprint/ai-agent-instance-blueprint-lib/src/lib.rs` (ABI types)
+- `tangle-network/ai-agent-sandbox-blueprint:ai-agent-instance-blueprint-lib/src/auto_provision.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:ai-agent-instance-blueprint-lib/src/lib.rs` (ABI types)
 
 ---
 
@@ -943,7 +943,7 @@ pub async fn retry_pending_provision_report_once(
 ```
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/ai-agent-instance-blueprint-lib/src/reporting.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:ai-agent-instance-blueprint-lib/src/reporting.rs`
 
 ---
 
@@ -1054,10 +1054,10 @@ Prevent memory exhaustion from unauthenticated requests:
 - Rate limit buckets: GC every 5 minutes
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/util.rs` (SSRF)
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/operator_api.rs` (headers, body limit)
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/rate_limit.rs`
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/session_auth.rs` (capacity limits)
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/util.rs` (SSRF)
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/operator_api.rs` (headers, body limit)
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/rate_limit.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/session_auth.rs` (capacity limits)
 
 ---
 
@@ -1107,7 +1107,7 @@ pub struct EscrowWatchdogConfig {
 Loaded from environment: `TANGLE_CONTRACT_ADDRESS`, `ESCROW_CHECK_INTERVAL_SECS`, `ESCROW_MAX_CONSECUTIVE_FAILURES`, etc.
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/ai-agent-instance-blueprint-lib/src/billing.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:ai-agent-instance-blueprint-lib/src/billing.rs`
 
 ---
 
@@ -1179,10 +1179,10 @@ let tee_backend = if std::env::var("TEE_BACKEND").is_ok() {
 TEE sandboxes have their own sealed-secrets API (`/api/sandboxes/{id}/tee/sealed-secrets`) because the standard secret injection (which recreates the container) would invalidate attestation.
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/tee/mod.rs`
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/tee/backend_factory.rs`
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/tee/sealed_secrets.rs`
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/tee/sealed_secrets_api.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/tee/mod.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/tee/backend_factory.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/tee/sealed_secrets.rs`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/tee/sealed_secrets_api.rs`
 
 ---
 
@@ -1285,9 +1285,9 @@ if let Err(msg) = session_auth::validate_required_config() {
 ```
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/sandbox-runtime/src/runtime.rs` (SidecarRuntimeConfig)
-- `/home/drew/code/ai-agent-sandbox-blueprint/config/operator.toml`
-- `/home/drew/code/ai-agent-sandbox-blueprint/config/job_pricing.toml`
+- `tangle-network/ai-agent-sandbox-blueprint:sandbox-runtime/src/runtime.rs` (SidecarRuntimeConfig)
+- `tangle-network/ai-agent-sandbox-blueprint:config/operator.toml`
+- `tangle-network/ai-agent-sandbox-blueprint:config/job_pricing.toml`
 
 ---
 
@@ -1393,9 +1393,9 @@ cargo test -p trading-blueprint-bin -- operator_api
 ```
 
 **Source files:**
-- `/home/drew/code/ai-agent-sandbox-blueprint/scripts/test-e2e.sh`
-- `/home/drew/code/ai-agent-sandbox-blueprint/CLAUDE.md` (regression gate)
-- `/home/drew/code/ai-trading-blueprints/CLAUDE.md` (trading test commands)
+- `tangle-network/ai-agent-sandbox-blueprint:scripts/test-e2e.sh`
+- `tangle-network/ai-agent-sandbox-blueprint:CLAUDE.md` (regression gate)
+- `tangle-network/ai-trading-blueprint:CLAUDE.md` (trading test commands)
 
 ---
 
