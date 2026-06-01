@@ -43,15 +43,15 @@ Do not skip the overview. It defines the protocol and business model semantics.
 
 ## Source of Truth
 
-This skill lives at `~/skills/tangle-blueprint-expert/` and is symlinked into `~/.claude/skills/`.
+This skill is distributed through the public `tangle-network/skills` marketplace under `plugins/tangle-blueprint-expert/`.
 
 Reference codebases:
 - [tangle-network/blueprint](https://github.com/tangle-network/blueprint) -- Blueprint SDK (Rust, cargo-tangle CLI)
 - [tangle-network/tnt-core](https://github.com/tangle-network/tnt-core) -- Core Tangle protocol contracts (BSM hooks, staking, payments)
 - [tangle-network/ai-agent-sandbox-blueprint](https://github.com/tangle-network/ai-agent-sandbox-blueprint) -- Production blueprint example
 - [tangle-network/ai-trading-blueprint](https://github.com/tangle-network/ai-trading-blueprint) -- Production blueprint example
-- [vllm-inference-blueprint](~/code/vllm-inference-blueprint) -- GPU inference blueprint with shielded payments
-- [shielded-payment-gateway](/tmp/shielded-payment-gateway) -- Privacy-preserving payment contracts + SDK
+
+Use project-provided repositories or public examples for specialized GPU inference, private-payment, or customer-specific patterns. Do not assume local paths exist.
 
 ## Core Contract (Never Violate)
 
