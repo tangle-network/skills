@@ -1,0 +1,8 @@
+{
+  "name": "tangle-blueprint-iframe-app",
+  "description": "Build hosted blueprint product UIs that embed safely in Tangle Cloud with iframe mode, postMessage wallet bridging, declarative manifest permissions, local catalog wiring, Cloudflare headers, and browser verification.",
+  "author": {
+    "name": "Tangle Network",
+    "email": "hello@tangle.tools"
+  }
+}
