@@ -1,6 +1,6 @@
 {
   "name": "build-agent-app",
-  "description": "Build a NEW Tangle agent product greenfield on @tangle-network/agent-app + the substrate, instead of forking another agent app. Three-layer architecture (substrate engine / agent-app shell / product domain seams), build phases, per-module seams, and the engine-vs-shell layering rule.",
+  "description": "Adopt @tangle-network/agent-app (the agent-product app-shell framework) \u2014 greenfield OR migrate an existing app from any stack. Discovery interview \u2192 module set + path; engine/shell/domain layering rule; per-module seams; sandbox AND browser/edge-copilot wiring; the migration lift-loop; anti-patterns.",
   "author": {
     "name": "Tangle Network",
     "email": "hello@tangle.tools"
