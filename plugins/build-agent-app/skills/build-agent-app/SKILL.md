@@ -1,64 +1,85 @@
 ---
 name: build-agent-app
-description: "Build a NEW Tangle agent product (insurance/tax/legal/creative/gtm-style) greenfield on @tangle-network/agent-app + the substrate, instead of forking another agent app. Covers the architecture split (substrate engine / agent-app shell / product domain seams), the build phases, and the exact seams each agent-app module needs. Use when standing up a new agent product, scaffolding an agent app from scratch, or deciding what belongs in the app vs the framework. NOT for migrating an existing app — that skill comes later from trace analysis."
+description: "Adopt @tangle-network/agent-app — the shared application-shell framework for agent products — either greenfield (new product) or by migrating an existing app (from ANY stack). Starts with a discovery interview (product surface, agent surface, eval surface, features, sandbox-or-not, billing, integrations), then routes to the right module set + path. Covers the engine/shell/domain layering rule, per-module seams, sandbox AND non-sandbox (browser/edge copilot) wiring, the migration lift-loop, and anti-patterns. Use when standing up a new agent product, deciding what belongs in the app vs the framework, or porting an existing app onto agent-app."
 ---
 
-# Build a new agent app on `@tangle-network/agent-app`
+# Adopt agent-app — build new or migrate, on the shared app shell
 
-The mistake every Tangle agent product made: it was **forked from another agent app** (insurance forked legal → inherited legal's IRS/FinCEN filing scripts and `:::proposal` fenced blocks). Don't fork. Build greenfield on the shared shell and supply only your domain.
+`@tangle-network/agent-app` is the application-**shell** framework for agent products. The substrate packages (`@tangle-network/{agent-eval, agent-runtime, agent-integrations, tcloud, sandbox}`) are the *engine*; agent-app is the opinionated assembly every product otherwise rebuilds: a structured agent→app tool side channel (human-in-the-loop approvals, dated follow-ups, generated UI, grounded citations), the bounded chat tool-loop, capability auth, model config, per-workspace billing, integration-hub wiring, field crypto, SSE normalization, an eval bridge, and self-service login. Products supply **domain** through typed seams.
 
-## The three layers (know which one your code belongs in)
+## Step 0 — DISCOVER (always start here; do not write code until these are answered)
 
-1. **Substrate engine** — `@tangle-network/{sandbox, agent-runtime, agent-eval, agent-integrations, agent-knowledge, tcloud}`. Sandbox lifecycle, the driven-loop runtime, the eval campaign framework, the integration hub, knowledge ingestion, billing/keys. You consume these; you never reimplement them.
-2. **App shell** — `@tangle-network/agent-app`. The opinionated application layer every product duplicates: the structured agent→app tool side channel, the bounded chat tool-loop, capability auth, the broker-token/login flow, the delegation MCP, the inline eval gate. You consume these and supply seams.
-3. **Your product (the app)** — the ONLY place domain code lives: DB schema, prompts, knowledge corpus, skill playbooks, the proposal taxonomy, and the **handlers** that persist to your D1/KV. Everything domain-specific stays here; the shell stays generic.
+Interview the stakeholder (or read the existing app) for:
 
-> Litmus test for "does this belong in the app or the framework?": if it mentions a premium, a policy, a filing, a campaign — it's the **app**. If it's "route a tool call", "mint a token", "run the tool loop", "verify a quote is in a file" — it's already in **agent-app** or the engine; import it.
+1. **Product surface** — what is it? back-office automation, a customer-facing chat product, an in-app copilot, a batch/workflow runner?
+2. **Agent surface** — pick per surface (an app can have both):
+   - **Sandboxed agent** — long-running, owns a container, file/tool access, delegated work. Uses the sandbox profile + per-turn MCP servers.
+   - **Browser / edge copilot** — lightweight inference, no container. Wires `streamTurn` to the model directly (Tangle Router / tcloud SDK / Vercel AI SDK). **agent-app fully supports this — the runtime loop + tool side channel are sandbox-free.**
+3. **Eval surface** — full campaign (personas, traces, judges, scorecards via agent-eval) / an inline completion gate / none yet?
+4. **Product features** (each maps to a module): human-in-the-loop approvals? dated cadence/reminders? generated UI? grounded citations? which integrations (providers)? per-user/workspace billing? PII at rest? delegated long-running research/build?
+5. **Path** — greenfield, or migrating an existing app? If migrating, **from what stack** (anything — a forked agent app, Next/Remix/Express, a notebook)? What's already hand-rolled vs missing?
 
-**The three-layer rule (memorize it — it's the whole game):** *Does the capability make sense without THIS app's tool side-channel / approval / chat route?* **Yes → engine** (`agent-eval`/`agent-runtime`/`agent-integrations`/`tcloud`); if not there yet, contribute it down — never fork it. **No → agent-app.** Domain (premiums, prompts, schema) → **your app**. Reimplementing a primitive the engine already exports (e.g. `verifyCompletion`, `weightedComposite`) is the cardinal sin — the weaker copy drifts. agent-app itself follows this: its `eval` module re-exports agent-eval and keeps only the side-channel bridge. (Full contract: `agent-app/AGENTS.md`.)
+Discovery output = the **module set** (below) + the **path** (greenfield §A / migration §B).
 
-## agent-app modules + the seam each needs
+## The layering rule (governs every decision)
 
-| Module | What you get | The seam YOU supply |
+> **Does the capability make sense without THIS app's tool side-channel / approval queue / chat route?**
+> **Yes → ENGINE** → it's in (or belongs in) `agent-eval`/`agent-runtime`/`agent-integrations`/`tcloud`/`sandbox`; consume it (peer-dep), and if it's missing there, **contribute it down** — never fork it.
+> **No → agent-app shell.** **Domain** (the product's nouns, prompts, schema, taxonomy) → **your app.**
+
+Corollary — **extend, never duplicate.** Before writing anything that completes, scores, loops, parses a tool name, encrypts, or talks to a hub, check the engine's exports. Reimplementing an engine primitive (e.g. completion/scoring that agent-eval already exports) is the cardinal sin — the weaker copy drifts.
+
+## Module set (map discovery answers to these)
+
+| Need | Module | Seam you supply |
 |---|---|---|
-| `/tools` | `submit_proposal` / `schedule_followup` / `render_ui` / `add_citation` — OpenAI defs, MCP-server builder, HTTP route handler, runtime executor, capability auth | `AppToolTaxonomy` (your proposal `type`s + the regulated subset) + `AppToolHandlers` (4 async fns that write to YOUR db, keyed off `ctx`) + a `verifyToken` (use `createCapabilityToken`/`verifyCapabilityToken`) |
-| `/runtime` | `streamAppToolLoop` (streaming) / `runAppToolLoop` (awaitable) — the bounded multi-turn tool loop | `streamTurn` (wrap your `runAgentTaskStream` backend), `executeToolCall` (route integration vs app tool), `extractText`/`extractToolCall`, `isExecutableTool` |
-| `/tangle` | `buildConsentUrl` + `createBrokerTokenProvider` (developer app-registration → `sk-tan-broker-` token, cached/auto-refreshed) | the concrete `TangleAppsClient` from `@tangle-network/agent-integrations` + your client_id/secret/grant |
-| `/delegation` | `buildDelegationMcpServer` (the agent-runtime driven-loop MCP, opt-in) | your `TANGLE_API_KEY` + trace env to forward |
-| `/eval` | `producedFromToolEvents` + `verifyCompletion` + `tokenRecallChecker` + `weightedScore` — the lightweight inline completion gate | your `CompletionRequirement[]` (per-deliverable `satisfiedBy`). For full campaigns/traces/LLM-judge, use `@tangle-network/agent-eval` instead. |
+| Human-in-the-loop approvals + structured actions | `/tools` | `AppToolHandlers` (persist to your store) + `AppToolTaxonomy` (your action types) + `verifyToken` |
+| Dated cadence / generated UI / grounded citations | `/tools` (`schedule_followup` / `render_ui` / `add_citation`) | same handlers |
+| Chat turn loop (sandbox OR browser) | `/runtime` `streamAppToolLoop` / `runAppToolLoop` | `streamTurn` (wrap any backend) + `executeToolCall` |
+| Model config (Tangle Router / BYOK) | `/runtime` `resolveTangleModelConfig` | env |
+| Eval | `/eval` | `producedFromToolEvents` bridge + re-exports agent-eval's `verifyCompletion`/`weightedComposite` (peer-dep) |
+| Integration-hub actions | `/integrations` | peer-dep `agent-integrations` + `apiKeyResolver` |
+| Per-workspace budget-capped billing | `/billing` | key store + crypto + tcloud provisioner seams |
+| Field PII crypto | `/crypto` | the encryption key |
+| Web boundary (body/context/rate-limit/headers) | `/web` | KV (rate-limit) |
+| PII redaction / SSE normalization | `/redact` / `/stream` | — |
+| Self-service login → broker token | `/tangle` | the apps client |
+| Delegated long-running work (**sandbox only**) | `/delegation` | platform key |
+| Sandbox MCP server entries (**sandbox only**) | `/tools` `buildAppToolMcpServer` / `buildHttpMcpServer` | token + ctx |
 
-## Build phases
+## Agent surface — sandbox vs browser/edge copilot
 
-**Phase 0 — scaffold.** New repo: React Router v7 + Cloudflare Workers + D1/Drizzle + KV/R2, `pnpm`. `pnpm add @tangle-network/agent-app` (+ the substrate packages). Do NOT copy another agent app's `src/`.
+Both consume the SAME `/tools`, `/runtime`, `/eval`, `/billing`, `/crypto`. They differ only in how the agent reaches the tools:
 
-**Phase 1 — domain model.** Define your D1 schema (the equivalent of `proposedActions`, your entities, your calendar table). Write the system prompt + knowledge corpus + skill playbooks. Define your **proposal taxonomy**: the `type`s your `submit_proposal` accepts and which are regulated (require a named human).
+- **Sandboxed**: the in-container agent calls per-turn **MCP servers** (`buildAppToolMcpServer`) over HTTP; the app's routes (`handleAppToolRequest`) execute them. Delegated work via `/delegation`.
+- **Browser / edge copilot (no sandbox)**: the app runs the loop in-process — `streamAppToolLoop({ streamTurn, executeToolCall, … })` where `streamTurn` wraps the **Tangle Router** (`resolveTangleModelConfig`) / **tcloud SDK** / **AI SDK** call directly, and `executeToolCall` routes to `createAppToolRuntimeExecutor(handlers)`. No container, no MCP. The structured side channel, billing, crypto, and eval bridge all still apply. (`/delegation` + the MCP-server builder are simply not used.)
 
-**Phase 2 — wire `/tools`.** Implement `AppToolHandlers` (4 fns that persist to your D1/KV, reading `ctx.workspaceId`/`ctx.threadId`). Then:
-- One route file per tool: `export const action = ({ request }) => handleAppToolRequest(request, { tool, handlers, taxonomy, verifyToken, headerNames })`.
-- Per-turn MCP servers: `buildAppToolMcpServer({ tool, baseUrl, token, ctx, description, headerNames })` spread into the sandbox profile's `mcp` map.
-- `verifyToken` = `verifyCapabilityToken(userId, bearer, { secret: env.CAPABILITY_SECRET, prefix })`; mint with `createCapabilityToken`.
+## §A — Greenfield
 
-**Phase 3 — wire `/runtime`.** Your chat runtime drives `streamAppToolLoop` (streaming/SSE) or `runAppToolLoop` (drain/eval): advertise `buildAppToolOpenAITools(taxonomy)` on the backend; pass `executeToolCall` that routes hub tools to the integration executor and app tools to `createAppToolRuntimeExecutor`. Add `/delegation` if the agent should dispatch long research/build loops.
+1. **Scaffold** a fresh app (don't copy another agent app). `pnpm add @tangle-network/agent-app` + the engine peers you need.
+2. **Domain model** — your store/schema, prompts, the action taxonomy.
+3. **Wire the module set** from discovery: implement `AppToolHandlers` against your store; mount `/tools` routes (and MCP servers if sandboxed); drive `/runtime`; add `/billing`,`/integrations`,`/tangle`,`/eval` as features dictate.
+4. **Verify** — typecheck/test/build green; real tests at the boundaries (a tool call lands a real row; the loop drives a model tool_call to a real effect).
 
-**Phase 4 — wire `/tangle` (self-service auth).** Register the app once (`TangleAppsClient.registerApp`), persist the client_secret. On first user use, redirect through `buildConsentUrl` → exchange the `agc_` code for a grant → `createBrokerTokenProvider({ client, clientId, clientSecret, grantId })`. Use `provider.getToken()` as the hub bearer per `/v1/hub/exec`. No hard-coded "trusted app" registration.
+## §B — Migration (from ANY existing app)
 
-**Phase 5 — eval.** Lightweight gate: feed your turn's produced events through `producedFromToolEvents` → `verifyCompletion(requirements, produced)`. For a real campaign (adversarial personas, traces, LLM-judge, held-out promotion) stand up `@tangle-network/agent-eval` (see the `agent-stack-adoption` / `agent-eval-adoption` skills).
+The trace-proven loop — keep the app's tests **green at every step**:
 
-**Phase 6 — verify.** `pnpm typecheck && pnpm test && pnpm build`. Real-D1 route tests (miniflare via the eval platform harness), an MCP-injection assertion, a loop test that proves a model tool_call → real row + produced event.
+1. **Audit + classify** every server module: **ENGINE** (→ peer-dep the substrate) · **SHELL** (→ lift to / consume from agent-app) · **DOMAIN** (→ keep) · **DEAD** (→ delete — fork-inherited cruft is often the single biggest win; verify zero importers first).
+2. **Delete the dead** first (free compression, zero behavior change, prove it green).
+3. **Lift shell concerns in dependency order.** Per concern: import the agent-app module → supply the seam (handlers/taxonomy/verifyToken/store/resolver) → **delete the local implementation, leaving a thin shim that preserves the public names callers use** → run the suite → green or revert. Preserve exact wire details (header names, error codes, token prefixes) in the shim.
+4. **One class identity for shared errors** — import the framework's error type, don't keep a local copy (a second `instanceof` class silently misroutes).
+5. **De-dupe against engines** — if a lifted thing duplicates an engine export, compose/re-export the engine instead.
+6. **What NOT to lift** (it's not shell): domain logic; auth/RBAC bound to your own schema + auth library; substrate *adoption* (trace ingestion is agent-eval, not agent-app); thin domain-content wrappers.
 
-## Anti-patterns (these are why the fork-debt exists)
+## Anti-patterns
 
-- **Don't fork another agent app.** You inherit its domain leftovers (the insurance sandbox shipping IRS/FinCEN scripts is the cautionary tale). Start empty, add agent-app.
-- **Don't hand-roll the side channel.** No bespoke proposal route, capability HMAC, MCP-server shape, or tool loop — they're all in agent-app, tested. Reimplementing = the weaker copy that drifts.
-- **Never emit fenced `:::` blocks.** The structured side channel is validated TOOL CALLS. A described/“emitted” block routes nothing; a tool call is validated and returns a result the model must read.
-- **Keep domain out of the framework.** If you're tempted to add a proposal `type` or a premium field to agent-app, stop — it goes in your taxonomy/handlers. agent-app imports no product code.
-- **Don't downgrade your eval.** If you run full agent-eval campaigns, keep them; `/eval` is the *lighter* inline gate, not a replacement.
-
-## Reference consumer
-
-`~/code/insurance-agent` is the canonical consumer: `src/lib/.server/tools/app-tool-runtime.ts` (taxonomy + handlers + the runtime executor delegation), the four `src/routes/api.tools.*` route one-liners, `src/lib/.server/integrations/capability.ts` (token delegation), `src/lib/.server/sandbox/index.ts` (MCP-server + delegation builders), and `agent-runtime/chat.ts` (the `streamAppToolLoop` adoption). Read those for the exact wiring.
+- **Don't fork another agent app.** You inherit its domain leftovers (e.g. one app shipped a *different* domain's filing scripts because it was copy-forked). Start empty, add agent-app.
+- **Don't hand-roll the side channel / loop / hub client / token.** They're in agent-app or the engine — compose them; a reimplementation is the weaker copy that drifts.
+- **Never scrape structured output from prose** (fenced blocks, regex on the reply). Side effects are validated **tool calls** that return a result the model reads.
+- **Keep domain out of the framework** — an action type, a price, a disclaimer, a rubric is a *parameter*, never baked in.
+- **Don't bundle the engines** — peerDependency, so the product pins the version (no BOM lock, no forced fleet bump).
 
 ## Related skills
-- **agent-stack-adoption / agent-eval-adoption** — wiring the substrate engine (runtime loops, eval campaigns, knowledge ingestion). This skill is the SHELL layer above them.
-- **substrate-release** — when you find something you hand-rolled here that every app needs, lift it INTO agent-app and publish.
-- (later) **migrate-to-agent-app** — porting an EXISTING forked app onto agent-app. Author it after trace-log analysis of this greenfield path proves the wiring; this skill is greenfield-only.
+- **agent-stack-adoption / agent-eval-adoption** — wiring the substrate *engines* (loops, eval campaigns, ingestion). This skill is the SHELL layer above them.
+- **substrate-release** — when you wrote something engine-general here, lift it INTO the engine + publish.
