@@ -167,6 +167,22 @@
         "tcloud",
         "sdk"
       ]
+    },
+    {
+      "name": "build-agent-app",
+      "source": "./plugins/build-agent-app",
+      "description": "Build a NEW Tangle agent product greenfield on @tangle-network/agent-app + the substrate, instead of forking another agent app. Three-layer architecture (substrate engine / agent-app shell / product domain seams), build phases, per-module seams, and the engine-vs-shell layering rule.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "adoption",
+        "agent-app",
+        "app-shell",
+        "greenfield",
+        "sdk"
+      ]
     }
   ]
 }
