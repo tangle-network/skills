@@ -1,0 +1,8 @@
+{
+  "name": "upgrade-agent-fleet",
+  "description": "Upgrade a fleet of Tangle agent products to the current shell standard (adopt @tangle-network/agent-app, delete hand-rolled shell duplication, strip fork-inherited domain residue, contribute generic improvements down to the substrate). Dynamic workflow fanout with adversarial completion gates that make a false 'done' fail; loops per agent until measurable completion criteria pass.",
+  "author": {
+    "name": "Tangle Network",
+    "email": "hello@tangle.tools"
+  }
+}
