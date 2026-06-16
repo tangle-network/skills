@@ -421,6 +421,22 @@ export default defineConfig({
 
 Jobs mutate state. Everything else goes through the operator API.
 
+## Where Operators Come From (Production Deploy)
+
+The operators your frontend discovers via `useOperators` are not someone hand-running a blueprint's instance binary. That matters for how you reason about availability and the service lifecycle.
+
+Running a blueprint's operator/instance binary directly (e.g. `<binary> run` with a hardcoded `SERVICE_ID` / `TEST_MODE=true`) is for **LOCAL TESTING ONLY**. In production each operator box runs the **Blueprint Manager daemon**:
+
+```bash
+cargo-tangle blueprint run -t --pretty \
+  --http-rpc-url <HTTP_RPC> --ws-rpc-url <WS_RPC> \
+  --keystore-uri <KEYSTORE> --data-dir <DATA>/bpm-data \
+  --chain <testnet|mainnet> --protocol tangle
+# systemd: SyslogIdentifier=blueprint-manager
+```
+
+The manager watches the chain and **spawns the per-service instance itself** when a service request is approved — you never `ExecStart` / hand-run the instance binary in production. This is the on-chain lifecycle your UI drives end to end: deploy the manager → operator **registers** for the blueprint → a **user requests a service** (your service request/approve flow) selecting registered operators → operators **approve** → the manager spawns the instance with the assigned service id, at which point `useProvisionProgress` reports it ready. Reference that does it right: `ai-trading-blueprint/deploy/go-live.sh` + `trading-blueprint.service` (ExecStart is `cargo-tangle blueprint run`, not the validator binary).
+
 ## Critical Files
 
 - `src/index.ts` — main exports (hooks, stores, contracts, utils)

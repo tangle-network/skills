@@ -11,9 +11,10 @@ Patterns for GPU provisioning, shielded payments integration, pricing/RFQ, and r
 1. [GPU Detection and Provisioning](#1-gpu-detection-and-provisioning)
 2. [Shielded Payments Integration](#2-shielded-payments-integration)
 3. [Pricing TOML and RFQ](#3-pricing-toml-and-rfq)
-4. [Remote Providers (Cloud GPU)](#4-remote-providers-cloud-gpu)
-5. [Subprocess Lifecycle (vLLM, Ollama)](#5-subprocess-lifecycle-vllm-ollama)
-6. [Dual Payment Modes](#6-dual-payment-modes)
+4. [Payment Model Guide](#4-payment-model-guide)
+5. [Remote Providers (Cloud GPU)](#5-remote-providers-cloud-gpu)
+6. [Subprocess Lifecycle (vLLM, Ollama)](#6-subprocess-lifecycle-vllm-ollama)
+7. [Dual Payment Modes](#7-dual-payment-modes)
 
 ---
 
@@ -342,7 +343,154 @@ impl PricingConfig {
 
 ---
 
-## 4. Remote Providers (Cloud GPU)
+## 4. Payment Model Guide
+
+### Payment tokens
+Blueprints accept a configurable ERC20 payment token set at BSM initialization.
+In practice this is typically a stablecoin (USDC, USDT) or a wrapped stablecoin
+from the VAnchor shielded pool. Do NOT hardcode "tsUSD" — use `paymentToken` in
+contracts and "payment token base units" in config comments.
+
+### Three payment paths (all blueprints should support)
+
+1. **Direct on-chain payment** — customer calls `createService()` with ERC20 transfer.
+   Standard, no privacy. The payment token must match the BSM's `paymentToken`.
+
+2. **ShieldedCredits (x402/SpendAuth)** — customer deposits the payment token into the
+   ShieldedCredits escrow contract, then signs per-request SpendAuth signatures.
+   Anonymous. The operator claims payment from the escrow after serving.
+
+3. **API key (off-chain)** — operator issues API keys and bills however they want
+   (Stripe, invoice, etc.). No on-chain payment per request. Optional.
+
+### Stateless vs stateful pricing
+
+**Stateless services** (inference, image gen, transcription):
+- Use **EventDriven** pricing model
+- Bill per request via SpendAuth
+- Cost models: PerToken, PerChar, PerSecond, PerImage, FlatRequest
+
+**Stateful services** (vector store, file storage, databases):
+- Use **Subscription + EventDriven** hybrid
+- Subscription covers base capacity (storage allocation, included queries)
+- EventDriven covers usage overage (extra queries/writes beyond subscription)
+- Must track quotas: included requests per billing period, storage limits
+- Storage pricing: per-GB-month (subscription component)
+- Usage pricing: per-1K-operations (event-driven component)
+
+### Pricing configuration pattern
+
+```toml
+# Stateless blueprint (e.g. inference)
+[billing]
+price_per_input_token = 1       # payment token base units per input token
+price_per_output_token = 3      # payment token base units per output token
+
+# Stateful blueprint (e.g. vector store)
+[billing]
+subscription_rate_per_month = 10000000  # 10 USDC/month (6 decimals)
+included_queries_per_month = 100000     # included in subscription
+price_per_k_queries_overage = 5000      # overage pricing
+price_per_k_upserts = 10000
+max_storage_gb = 10
+```
+
+### BSM contract pattern for payment token
+
+```solidity
+// CORRECT: generic payment token
+address public paymentToken;
+
+function initialize(address _paymentToken) external initializer {
+    paymentToken = _paymentToken;
+}
+
+// WRONG: hardcoded tsUSD
+address public tsUSD;  // ← don't do this
+```
+
+### Compute-time pricing pattern (video/avatar)
+
+```toml
+# Price by compute time, not output duration
+[video]
+price_per_compute_second = 1000  # payment token base units per second of GPU compute
+max_compute_seconds = 600        # cap at 10 minutes of compute per job
+```
+
+### Long-running job pricing pattern (training)
+
+```toml
+[training]
+price_per_gpu_hour = 1000000     # payment token base units per GPU-hour
+max_gpu_hours = 24               # cap at 24 hours per training job
+checkpoint_interval_minutes = 30  # checkpoint frequency for partial billing
+```
+
+### Subscription + overage pattern (vector store, storage)
+
+```toml
+[storage]
+tiers = [
+    { name = "starter", storage_gb = 1, included_queries = 100000, rate = 100000 },
+    { name = "growth", storage_gb = 10, included_queries = 1000000, rate = 750000 },
+]
+overage_price_per_k_queries = 5000
+overage_price_per_k_upserts = 10000
+```
+
+### Pricing anti-patterns (from production audit)
+
+**Anti-pattern 1: Billing not wired**
+Every handler that serves a customer request MUST go through `billing_gate` or equivalent auth check. Found in: training-blueprint (zero billing on any endpoint), vector-store (5/7 endpoints unbilled before fix). Even admin/status endpoints need at minimum a MIN_ADMIN_COST gate to prevent unauthenticated access.
+
+**Anti-pattern 2: Pricing by output unit instead of compute cost**
+Video generation and avatar generation priced per output-second (e.g. $0.50 per second of video). But a 10-second video requires 300 seconds of GPU compute. The operator loses money on every request. Price by compute-second (wall-clock time from request to completion) or per-job with a compute-time estimate.
+
+Rule: if the service is GPU-bound and the output size doesn't correlate with compute time, price by compute time.
+
+**Anti-pattern 3: Stateful service with EventDriven-only pricing**
+Training and vector storage are stateful — the operator holds resources (GPU hours, disk space) over time. EventDriven pricing (pay per request) doesn't cover the ongoing cost. Must use Subscription + EventDriven hybrid:
+- Subscription covers the base resource reservation (GPU-hours, storage GB)
+- EventDriven covers per-request usage on top
+
+**Anti-pattern 4: Multi-operator payment split not implemented**
+Distributed inference has head + intermediate + tail operators. Only the head collects payment. The on-chain BSM contract is supposed to split proportionally, but the operator code doesn't trigger the split. If multiple operators serve a request, all operators must be compensated.
+
+### Pricing checklist (use for every new blueprint)
+
+Before shipping any blueprint, verify:
+
+- [ ] Every HTTP handler goes through `billing_gate` or auth check
+- [ ] Status/admin endpoints have at minimum `MIN_ADMIN_COST` billing gate
+- [ ] Pricing unit matches operator cost structure:
+  - Stateless inference (LLM, TTS, STT, embedding): per-token, per-character, per-second of INPUT
+  - Image generation: per-image
+  - Video/avatar generation: per-COMPUTE-second (not output duration)
+  - Training: per-GPU-hour (Subscription model)
+  - Storage: per-GB-month (Subscription) + per-request (EventDriven overage)
+- [ ] Long-running jobs (training, video gen) estimate cost upfront and settle on actual after completion
+- [ ] Config comments say "payment token base units" not "tsUSD"
+- [ ] BSM contract uses `paymentToken` not `tsUSD`
+- [ ] Pricing is discoverable: either on-chain via BSM or HTTP via `/pricing` or `/tiers` endpoint
+- [ ] Default pricing values are realistic (not 0 or placeholder)
+- [ ] Multi-operator workflows have payment split logic (or document that only one operator bills)
+
+### Pricing model selection guide
+
+| Service type | TNT Core model | Cost model | Billing trigger |
+|---|---|---|---|
+| Stateless inference (LLM, embed, TTS, STT) | EventDriven | PerToken / PerChar / PerSecond | Per request via x402 SpendAuth |
+| Image generation | EventDriven | PerImage | Per request |
+| Video/avatar generation | EventDriven | PerComputeSecond | Per job (async, settle on completion) |
+| Training | Subscription | PerGpuHour | Subscription at service creation + checkpoint events |
+| Vector storage | Subscription + EventDriven | Tier-based + per-request overage | Subscription + per-request |
+| Sandbox/container | Subscription | PerHour | Subscription at service creation |
+| File storage | Subscription | PerGbMonth | Subscription at service creation |
+
+---
+
+## 5. Remote Providers (Cloud GPU)
 
 The `blueprint-remote-providers` crate provisions cloud infrastructure for operators who don't have local GPUs.
 
@@ -405,7 +553,7 @@ async fn provision_gpu_instance(config: &OperatorConfig) -> anyhow::Result<Insta
 
 ---
 
-## 5. Subprocess Lifecycle (vLLM, Ollama)
+## 6. Subprocess Lifecycle (vLLM, Ollama)
 
 Blueprints that manage inference engines wrap them as child processes:
 
@@ -471,7 +619,7 @@ pub async fn spawn_ollama(model: &str) -> anyhow::Result<OllamaProcess> {
 
 ---
 
-## 6. Dual Payment Modes
+## 7. Dual Payment Modes
 
 ### Contract architecture
 

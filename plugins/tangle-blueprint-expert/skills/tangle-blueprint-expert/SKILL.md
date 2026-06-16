@@ -91,6 +91,28 @@ If these are mixed, stop and correct architecture first.
    - capture IDs (`blueprint_id`, `request_id`, `service_id`, `call_id`)
 5. Report only with evidence (commands + outcomes + remaining gaps).
 
+## Production Deploy = the Blueprint Manager, NEVER the instance binary
+
+Running a blueprint's operator/instance binary directly (e.g. `<binary> run` with a hardcoded
+`SERVICE_ID` / `TEST_MODE=true`) is for **LOCAL TESTING ONLY**. In production each operator box runs
+the **Blueprint Manager daemon**:
+
+```bash
+cargo-tangle blueprint run -t --pretty \
+  --http-rpc-url <HTTP_RPC> --ws-rpc-url <WS_RPC> \
+  --keystore-uri <KEYSTORE> --data-dir <DATA>/bpm-data \
+  --chain <testnet|mainnet> --protocol tangle
+# systemd: SyslogIdentifier=blueprint-manager
+```
+
+The manager watches the chain and **spawns the per-service instance itself** when a service request
+is approved -- you never `ExecStart` / hand-run the instance binary in production. Honor the full
+on-chain lifecycle: deploy the manager -> operator **registers** for the blueprint -> a **user
+requests a service** selecting registered operators -> operators **approve** -> the manager spawns
+the instance with the assigned service id. Reference that does it right:
+`ai-trading-blueprint/deploy/go-live.sh` + `trading-blueprint.service` (ExecStart is
+`cargo-tangle blueprint run`, not the validator binary).
+
 ## Tenancy + Auth Rules
 
 ### Single-tenant service instance
