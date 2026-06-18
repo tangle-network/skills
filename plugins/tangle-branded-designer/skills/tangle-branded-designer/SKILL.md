@@ -301,7 +301,27 @@ These apply across both contexts:
 
 ---
 
-## 5. Anti-Patterns
+## 5. Artifact-First Product Storytelling
+
+Use this gate for marketing sections, product pages, launch pages, and app screenshots. The reader should understand the product mechanic from the visual before they read the body copy.
+
+| Rule | Check |
+|------|-------|
+| Product artifact first | Show the actual surface: screenshot, terminal output, trace timeline, run ledger, workflow graph, code pane, real logo row, or generated image. A gradient panel or generic dashboard card does not count. |
+| One job per section | If the hero and the next section make the same claim, delete or rewrite one. No repeated product thesis. |
+| Real brands | Use real SVG/logo assets or approved wordmarks. Text-only logo boxes are a fallback, not the design. |
+| Complete grids | Avoid orphan cards. Use 4, 6, 8, or 12 items, or make one item intentionally span. A lone final card is a layout failure. |
+| No taxonomy tails | Do not put repeated chip rows under every card. If metadata matters, integrate it into the artifact preview. |
+| No vanity counters | Badges like "10 variants", "40 renders", or "8 loops" need provenance. Without a real source, remove them. |
+| Labels earn space | Delete labels that restate the title, selected brand, route, icon, or state already visible nearby. |
+| Purple is brand, green is state | Green means healthy, passed, paid, live, or safe. It is not a general brand accent. |
+| Code is a product surface | Marketing code must be readable at 14-16px, syntax-highlighted, fixed-height, and one-to-one across SDK and CLI examples. No wobble when tabs switch. |
+| CTAs route real work | Provision, create, inspect, and connect buttons should open the actual flow or preserve return paths through auth. No fake readiness states. |
+| Screenshot gate | Verify desktop and mobile screenshots. Check loaded images, logo correctness, contrast, dead space, card nesting, orphan cards, and tiny type before claiming quality. |
+
+---
+
+## 6. Anti-Patterns
 
 | Never | Why |
 |-------|-----|
@@ -314,3 +334,12 @@ These apply across both contexts:
 | Space Grotesk on marketing site | Use Satoshi. Space Grotesk is for the blog only. |
 | Solid background on section wrappers | Must be transparent with radial-gradient overlay. |
 | Centered hero text | Marketing heroes are LEFT-ALIGNED, 60% width, bottom-aligned. |
+| Gradient blocks pretending to be images | If the section promises images, screenshots, or generated outputs, render real media. |
+| Card inside card inside card | It reads as generated filler and wastes space. Use one container level. |
+| Hero copy repeated in the next section | Repetition makes the page feel unplanned. Give each section a different job. |
+| Green as general accent color | Tangle's brand accent is purple. Reserve green for status and risk state. |
+| Orphan card grids | A lone last card makes the layout look accidental. Change the count or span intentionally. |
+| Bottom chip rows on every card | Repeated tags weaken the card and add visual noise. |
+| Count badges without provenance | Fake precision damages trust faster than no number. |
+| Labels that repeat adjacent text | Delete labels like selected brand, route, or state when the component already says it. |
+| Tiny code and button text | Product proof must be legible in screenshots and on mobile. |
