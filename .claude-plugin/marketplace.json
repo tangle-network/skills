@@ -200,6 +200,22 @@
         "copilot",
         "sdk"
       ]
+    },
+    {
+      "name": "sandbox-ui-adoption",
+      "source": "./plugins/sandbox-ui-adoption",
+      "description": "Adopt the Tangle design system from @tangle-network/sandbox-ui + @tangle-network/brand: Heading / PageHeader / SectionTitle / PageShell primitives, role-to-size type scale, DashboardLayout in-app logo wiring, Tangle Quiet dark theme, and the monorepo version-skew gate.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "adoption",
+        "design-system",
+        "sandbox-ui",
+        "brand",
+        "ui"
+      ]
     }
   ]
 }
