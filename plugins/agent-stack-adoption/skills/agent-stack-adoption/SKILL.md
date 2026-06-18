@@ -1,6 +1,6 @@
 ---
 name: agent-stack-adoption
-description: "Adopt the self-improving Tangle agent stack (@tangle-network/{agent-runtime,agent-knowledge,agent-eval,sandbox,tcloud}) in any product. End-to-end pipeline checklist across 9 phases — single composer → ingestion → production-loop → MCP delegation → researcher → eval scenarios → viewer → matrix → live smoke → CI cron. Use when wiring a new product, auditing an existing product's adoption state, or extending an existing product with new phases."
+description: "Adopt the self-improving Tangle agent stack (@tangle-network/{agent-interface,agent-runtime,agent-knowledge,agent-eval,sandbox,agent-profile-materialize,tcloud}) in any product. End-to-end pipeline checklist across 9 phases — single composer → ingestion → improvement-loop → MCP delegation → researcher → eval scenarios → viewer → matrix → live smoke → CI cron. Use when wiring a new product, auditing an existing product's adoption state, or extending an existing product with new phases."
 ---
 
 # Agent Stack Adoption — full pipeline checklist
@@ -10,18 +10,37 @@ description: "Adopt the self-improving Tangle agent stack (@tangle-network/{agen
 | If you are... | Read |
 |---|---|
 | Wiring the full stack across all 9 phases (this skill's scope) | **THIS skill** |
-| Looking up specific substrate primitives (defineAgent, runLoop, MCP delegation, ProductionTraceSink, assertRealBackend, scorecard, analyst-loop, runAgentMatrix) — the primitives THIS skill assembles into a pipeline | `agent-eval-adoption` — primitive reference companion |
+| Looking up specific substrate primitives (defineAgent, runLoop, MCP delegation, the `TraceSource` family, assertRealBackend, scorecard, analyst-loop, runAgentMatrix) — the primitives THIS skill assembles into a pipeline | `agent-eval-adoption` — primitive reference companion |
 | Working IN the agent-eval substrate repo, calling primitives correctly, OR setting up the canonical `eval/` folder + 3 pnpm scripts | `agent-eval` (project skill, auto-loaded in agent-eval repo) — substrate footgun bible + canonical consumer layout |
 | Building a judge component specifically | `eval-agent` — LLM-as-judge rubric generation |
 
-The Tangle agent stack ships four packages that compose into one pipeline:
-`@tangle-network/sandbox` runs the per-workspace box, `@tangle-network/agent-runtime`
-drives the chat + delegation MCP + coder/researcher profiles, `@tangle-network/agent-knowledge`
-gates research outputs through a propose-don't-apply layer, and
-`@tangle-network/agent-eval` ingests the live trace stream into a held-out gate
-that lands auto-PRs against the production prompt addendum. "Adopted" means the
-product runs through ALL nine phases below — anything less ships a partial
-loop that drifts. This skill is the state machine. Cross-link:
+The Tangle agent stack composes ~6 packages into one pipeline, layered over a
+neutral contract at the bottom:
+
+- **`@tangle-network/agent-interface`** — the NEUTRAL contract layer beneath the
+  whole stack. Owns `AgentProfile` / `AgentProfileMcpServer` / `HarnessType` /
+  `ReasoningEffort` / `Part` / `ToolPart` plus a capability layer
+  (`harnessSupportsModel`, `reasoningEffortsFor`, `reasoningLadder`). Every other
+  package normalizes into these types, so a profile is harness-agnostic by
+  construction. Import `AgentProfile` / `AgentProfileMcpServer` from HERE
+  (canonical); `@tangle-network/sandbox` still re-exports them for back-compat.
+- **`@tangle-network/agent-profile-materialize`** — turns an `AgentProfile` into a
+  concrete on-disk workspace (`materializeProfile` → `WorkspacePlan`,
+  `applyWorkspacePlan`). The substrate that materializes the authored profile into
+  harness-shaped files.
+- **`@tangle-network/sandbox`** — runs the per-workspace box (`Sandbox`,
+  `SandboxInstance`, `SandboxEvent`).
+- **`@tangle-network/agent-runtime`** — drives the chat + delegation MCP, the
+  `runLoop` kernel, drivers/combinators, coder/researcher presets, the `TraceSource`
+  family, and `runAnalystLoop`.
+- **`@tangle-network/agent-knowledge`** — gates research outputs through a
+  propose-don't-apply layer.
+- **`@tangle-network/agent-eval`** — ingests the live trace stream into a held-out
+  gate that lands auto-PRs against the production prompt addendum; owns
+  `runImprovementLoop` / `runOptimization` / `runAgentMatrix` / `runMultishotMatrix`.
+
+"Adopted" means the product runs through ALL nine phases below — anything less
+ships a partial loop that drifts. This skill is the state machine. Cross-link:
 [`agent-eval-adoption`](../agent-eval-adoption/SKILL.md) is the substrate-primitive
 reference (defineAgent, analyst loop, scorecard, ship-gate); this skill is the
 pipeline shape that consumes those primitives.
@@ -57,8 +76,9 @@ exact directory names.
 
 ### Phase 0 — substrate deps + version pinning
 
-**Goal:** every consumer pins compatible versions of the four substrate
-packages plus `@tangle-network/tcloud` for LLM calls.
+**Goal:** every consumer pins compatible versions of the substrate packages —
+the neutral `@tangle-network/agent-interface` contract at the bottom, the
+runtime/eval/knowledge/sandbox layers, and `@tangle-network/tcloud` for LLM calls.
 
 **Files:** `package.json` (root or workspace package consuming the stack).
 
@@ -67,27 +87,36 @@ packages plus `@tangle-network/tcloud` for LLM calls.
 ```json
 {
   "dependencies": {
-    "@tangle-network/agent-eval": "^0.38.0",
-    "@tangle-network/agent-runtime": "^0.23.0",
-    "@tangle-network/agent-knowledge": "^1.4.0",
-    "@tangle-network/sandbox": "0.2.1",
-    "@tangle-network/tcloud": "^0.4.6"
+    "@tangle-network/agent-interface": "^0.10.0",
+    "@tangle-network/agent-eval": "^0.93.0",
+    "@tangle-network/agent-runtime": "^0.65.0",
+    "@tangle-network/agent-knowledge": "^1.7.0",
+    "@tangle-network/sandbox": "^0.8.0",
+    "@tangle-network/agent-profile-materialize": "^0.1.0",
+    "@tangle-network/tcloud": "^0.4.13"
   },
   "pnpm": {
     "minimumReleaseAge": 4320,
     "minimumReleaseAgeExclude": [],
     "onlyBuiltDependencies": ["esbuild", "better-sqlite3"],
     "overrides": {
-      "@tangle-network/agent-eval": "^0.38.0"
+      "@tangle-network/agent-eval": "^0.93.0",
+      "@tangle-network/agent-interface": "^0.10.0"
     }
   }
 }
 ```
 
+`@tangle-network/agent-profile-materialize` is optional — pin it only if you
+materialize profiles to disk (Phase 1 composer can run without it).
+
 The `pnpm.overrides` clause collapses transitive duplicates — without it
 `@tangle-network/agent-runtime` ghosts a different `agent-eval` minor through
-its peerDep range. The 72-hour `minimumReleaseAge` quarantine catches the
-yank-window attack class for the whole pnpm tree.
+its peerDep range. agent-interface goes in `overrides` too so the whole tree
+agrees on ONE copy of the contract types (a profile typed against two
+agent-interface minors is the canonical structural-mismatch bug). The 72-hour
+`minimumReleaseAge` quarantine catches the yank-window attack class for the
+whole pnpm tree.
 
 **Verify:**
 
@@ -99,8 +128,12 @@ pnpm install --frozen-lockfile && pnpm dedupe --check
 **Anti-patterns:**
 
 - Floating `*` or `latest` ranges — catches a malicious yank-window publish.
-- Mixed minor versions between agent-runtime and agent-eval. agent-runtime
-  21.x consumes agent-eval 36.x trace types. Drift breaks the analyst loop.
+- Mixed versions between agent-runtime and its substrate peers. agent-runtime
+  0.65 declares `@tangle-network/agent-eval >=0.93.0 <1.0.0`,
+  `@tangle-network/agent-interface ^0.10.0`, `@tangle-network/agent-knowledge ^1.7.0`,
+  and `@tangle-network/sandbox ^0.8.0` as required peerDependencies. Pin inside
+  those ranges; drift breaks the analyst loop and the trace-type decode. (Confirm
+  the live peer range with `npm view @tangle-network/agent-runtime peerDependencies`.)
 - Omitting `minimumReleaseAge` — supply-chain hardening should pin a release-age
   quarantine for every dependency in the tree.
 
@@ -129,7 +162,10 @@ pattern.
 
 ```ts
 // src/server/sandbox/index.ts
-import type { AgentProfile, AgentProfileMcpServer } from '@tangle-network/sandbox'
+// AgentProfile / AgentProfileMcpServer are owned by the neutral contract layer.
+// Import from @tangle-network/agent-interface (canonical); @tangle-network/sandbox
+// re-exports them for back-compat.
+import type { AgentProfile, AgentProfileMcpServer } from '@tangle-network/agent-interface'
 import { PRODUCT_SYSTEM_PROMPT, productAgentProfile } from '../agent-profile'
 
 const DELEGATION_MCP_SERVER_KEY = 'agent-runtime-delegation'
@@ -287,29 +323,45 @@ const shutdown = () => server.close(() => process.exit(0))
 process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown)
 ```
 
+Trace capture goes through the **`TraceSource`** family — the substrate- and
+harness-agnostic seam (the old `createProductionTraceSink` is gone). The common
+currency is agent-eval's `ToolSpan`; detection + the failure taxonomy live in
+agent-eval. Two source flavors:
+
+- **Owned tool loop** (router-tools / cli-bridge dispatch): `createPushTraceSource()`
+  → call `record(step)` per tool call.
+- **Sandbox / fleet box** (the production target): `sandboxSessionTraceSource(box,
+  sessionId, { harness })` reads `box.messages({ sessionId })` parts and decodes
+  per-harness tool calls into spans.
+
 ```ts
 // src/server/agent-runtime/trace-capture.ts
-import { createProductionTraceSink, type ProductionTraceSink }
-  from '@tangle-network/agent-runtime/agent'
+import {
+  sandboxSessionTraceSource,
+  createPushTraceSource,
+  type TraceSource,
+} from '@tangle-network/agent-runtime/runtime'
 
-export function createProductionSink(env: WorkerTraceEnv): ProductionTraceSink {
-  const opts: { projectId: string; otlp?: { endpoint: string; authHeader: string } } = {
-    projectId: 'your-product',                 // change per product
-  }
-  if (env.LANGFUSE_OTEL_ENDPOINT) {
-    opts.otlp = {
-      endpoint: env.LANGFUSE_OTEL_ENDPOINT,
-      authHeader: env.LANGFUSE_OTEL_AUTH,      // full 'Basic <base64>' value
-    }
-  }
-  return createProductionTraceSink(opts)
+// Sandbox/fleet path — collect spans from the live box session after a turn.
+export function boxTraceSource(box: SessionTraceBox, sessionId: string): TraceSource {
+  // `harness` selects the per-harness decoder ('opencode' | 'claude-code' | ...);
+  // omit to try every registered adapter. NOTE: codex emits no structured tool
+  // calls, so per-tool spans are unavailable for codex from any path.
+  return sandboxSessionTraceSource(box, sessionId, { harness: 'opencode' })
+}
+
+// Owned-loop path — for a local router-tools / cli-bridge dispatch loop.
+export function ownedTraceSource() {
+  const { source, record } = createPushTraceSource()
+  return { source, record }   // call record(step) for each tool call
 }
 ```
 
-The ingest client (`ingestion/client.ts`) MUST swallow network /
-server errors and `console.warn` only — live chat must never crash because
-ingestion is down. `redact.ts` strips PII (emails, names, IDs) before any
-event leaves the worker isolate.
+Persist `await source.collect()` (the full `ToolSpan[]`) into the ingestion
+store, and forward to OTLP in deployed environments. The ingest client
+(`ingestion/client.ts`) MUST swallow network / server errors and `console.warn`
+only — live chat must never crash because ingestion is down. `redact.ts` strips
+PII (emails, names, IDs) before any event leaves the worker isolate.
 
 **Verify:**
 
@@ -324,9 +376,9 @@ ls -la .production-data/traces/events.ndjson
 **Anti-patterns:**
 
 - **Throwing into the user path.** A classic incident: a misconfigured OTLP
-  endpoint crashed the chat-completion stream because the sink hook threw.
-  `createProductionTraceSink` catches internally — do NOT wrap with code that
-  re-throws.
+  endpoint crashed the chat-completion stream because trace capture threw. Keep
+  `source.collect()` + the ingest fetch behind a try/catch that `console.warn`s —
+  do NOT let a trace-store failure surface into the chat stream.
 - **Losing `traceFlush` in `ctx.waitUntil`.** Cloudflare Workers tear down
   the isolate immediately on response — without `ctx.waitUntil(traceFlush())`
   the final batch of spans is dropped at request end.
@@ -343,12 +395,17 @@ ls -la .production-data/traces/events.ndjson
 
 ---
 
-### Phase 3 — production-loop on real chat path
+### Phase 3 — improvement-loop on real chat path
 
-**Goal:** the production loop's holdout runner drives the SAME
+**Goal:** the improvement loop's holdout runner drives the SAME
 `runChatThroughRuntime` + `AgentExecutionBackend` that production uses. The
 loop converges on real agent behavior under candidate prompts — not on a
 regex over the addendum text.
+
+> **API note:** the loop runner is `runImprovementLoop` from
+> `@tangle-network/agent-eval` (top-level export). `runProductionLoop` was renamed —
+> it no longer exists. `runImprovementLoop` rides on `runOptimization` (also
+> top-level in agent-eval) which rides on `runCampaign`.
 
 **Files:**
 
@@ -363,7 +420,7 @@ regex over the addendum text.
 
 ```ts
 // src/server/production-loop/index.ts (sketch)
-import { httpGithubClient, runProductionLoop } from '@tangle-network/agent-eval'
+import { httpGithubClient, runImprovementLoop } from '@tangle-network/agent-eval'
 import { runChatThroughRuntime } from '../agent-runtime/chat'
 import { composeProductionAgentProfile } from '../sandbox'
 import { PRODUCT_SYSTEM_PROMPT } from '../agent-profile'
@@ -436,7 +493,7 @@ pnpm eval:production-loop -- --dry-run
 
 - Reference pattern (illustrative): `your-agent/src/server/production-loop/index.ts`
   (real-chat holdout runner) + `tests/production-loop-real-worker.test.ts`.
-- agent-eval-adoption: "Held-out promotion gate + `runProductionLoop`".
+- agent-eval-adoption: "Held-out promotion gate + `runImprovementLoop`".
 
 ---
 
@@ -752,14 +809,15 @@ pnpm eval:delegation --scenario competitor-dashboard
 **Goal:** three surfaces:
 - **Viewer** — single-file HTML at `eval/viewer/viewer.html` that loads a
   run's NDJSON artifacts and renders the trace + delegation timeline.
-- **Matrix** — `runAgentMatrix` (agent-eval 0.37+) sweeps the cartesian
+- **Matrix** — `runAgentMatrix` (`@tangle-network/agent-eval/matrix`) sweeps the cartesian
   product of (**AgentProfile** × persona × rep), aggregating by axis.
 - **Multishot driver-agent** — `runMultishot` simulates a real user (LLM
   driver as persona) chatting with the agent across 10+ turns, with REAL
   inline tool execution (delegate_research + delegate_code), then runs THREE
   separate judges (conversation, code-review, content-quality).
 
-**The PRIMARY matrix axis MUST be `AgentProfile[]` from `@tangle-network/sandbox`.**
+**The PRIMARY matrix axis MUST be `AgentProfile[]` (the canonical type from
+`@tangle-network/agent-interface`).**
 
 Not `harness[]`, not `model[]`, not `reasoningLevel[]`. AgentProfile
 encapsulates ALL of those (systemPrompt, tools, mcp, reasoning level,
@@ -781,22 +839,26 @@ matrix participants; build for that today.
 
 ```ts
 // eval/agent-profiles.ts
-import type { AgentProfile } from '@tangle-network/sandbox'
+import type { AgentProfile } from '@tangle-network/agent-interface'
 import { composeProductionAgentProfile } from '../src/server/sandbox'
 
 // Baseline = exact production composer output (eval must equal production)
 export const profileBaseline: AgentProfile = composeProductionAgentProfile()
 
+// AgentProfile carries the system prompt under `prompt.systemPrompt`
+// (there is no top-level `systemPrompt` field — it lives on `prompt`).
+const baseSystemPrompt = profileBaseline.prompt?.systemPrompt ?? ''
+
 // Delegation-heavy = same composer + override systemPrompt to push tool use
 export const profileDelegationHeavy: AgentProfile = {
   ...profileBaseline,
-  systemPrompt: `${profileBaseline.systemPrompt}\n\nIMPORTANT: ALWAYS use delegate_research before answering audience questions. ALWAYS use delegate_code when the user asks for scripts, pipelines, or dashboards.`,
+  prompt: { ...profileBaseline.prompt, systemPrompt: `${baseSystemPrompt}\n\nIMPORTANT: ALWAYS use delegate_research before answering audience questions. ALWAYS use delegate_code when the user asks for scripts, pipelines, or dashboards.` },
 }
 
 // Interview-first = mandate 3 interview turns before any artifact
 export const profileInterviewFirst: AgentProfile = {
   ...profileBaseline,
-  systemPrompt: `${profileBaseline.systemPrompt}\n\nMANDATORY: Spend the first 3 turns interviewing the user about audience, metrics, constraints. Do not produce artifacts until you have these answers.`,
+  prompt: { ...profileBaseline.prompt, systemPrompt: `${baseSystemPrompt}\n\nMANDATORY: Spend the first 3 turns interviewing the user about audience, metrics, constraints. Do not produce artifacts until you have these answers.` },
 }
 
 export const PROFILES = {
@@ -812,7 +874,7 @@ export const PROFILES = {
 // eval/multishot.ts
 // Multi-turn simulation: LLM driver acts as persona, agent has tools,
 // tool_calls execute inline (researcher / coder LLM calls), 10+ turns.
-import type { AgentProfile } from '@tangle-network/sandbox'
+import type { AgentProfile } from '@tangle-network/agent-interface'
 import type { Persona } from './personas'
 
 export async function runMultishot(opts: {
@@ -987,7 +1049,7 @@ pnpm tsx scripts/smoke-full-loop.ts --message "research CAC for B2B SaaS"
 
 ### Phase 9 — production-loop CI cron
 
-**Goal:** weekly automated run of `runProductionLoop` on a self-hosted
+**Goal:** weekly automated run of `runImprovementLoop` on a self-hosted
 runner, gated by the held-out evaluation, opening a draft PR against the
 loop-owned addendum surface on gate pass.
 
@@ -1122,33 +1184,42 @@ delegation. Phases 6-7 add evaluation. Phases 8-9 close the autonomous loop.
 
 Track this section against the released packages; bump as new primitives land.
 
-| Primitive                              | Package                          | Version | Status   |
+Versions below verified against the published dist (`npm pack` + grep). When the
+substrate moves, re-verify with `npm view @tangle-network/<pkg> version` and a dist
+grep — do NOT trust this table over the registry.
+
+| Primitive                              | Package / subpath                | Version | Status   |
 | -------------------------------------- | -------------------------------- | ------- | -------- |
-| `runLoop` kernel                       | agent-runtime                    | 0.21.0  | shipped  |
-| `createRefineDriver` / `FanoutVote`    | agent-runtime                    | 0.21.0  | shipped  |
-| `coderProfile` preset                  | agent-runtime                    | 0.21.0  | shipped  |
-| `multiHarnessCoderFanout`              | agent-runtime                    | 0.21.0  | shipped  |
-| MCP server (5 delegation tools)        | agent-runtime/mcp                | 0.21.0  | shipped  |
-| Sibling executor (default)             | agent-runtime/mcp                | 0.21.0  | shipped  |
-| Fleet executor (`TANGLE_FLEET_ID`)     | agent-runtime/mcp                | 0.21.0  | shipped  |
-| `defineAgent` manifest                 | agent-runtime/agent              | 0.21.0  | shipped  |
-| `createProductionTraceSink`            | agent-runtime/agent              | 0.21.0  | shipped  |
-| `createSurface{Improvement,Knowledge}` | agent-runtime/agent              | 0.21.0  | shipped  |
-| `runAnalystLoop`                       | agent-runtime/analyst-loop       | 0.21.0  | shipped  |
-| `runProductionLoop`                    | agent-eval                       | 0.36.0  | shipped  |
-| `runAgentMatrix` (cartesian, byAxis)   | agent-eval/matrix                | 0.36.0  | shipped  |
-| `assertRealBackend`                    | agent-eval                       | 0.36.0  | shipped  |
-| Scorecard (`agentProfileHash`, diff)   | agent-eval                       | 0.36.0  | shipped  |
-| Wire server (`startServer`)            | agent-eval/wire                  | 0.36.0  | shipped  |
-| `FileSystemTraceStore`                 | agent-eval/traces                | 0.36.0  | shipped  |
-| `proposeFromFindings`                  | agent-knowledge                  | 1.4.0   | shipped  |
-| `applyKnowledgeWriteBlocks`            | agent-knowledge                  | 1.4.0   | shipped  |
-| `multiHarnessResearcherFanout`         | agent-knowledge                  | 1.4.0   | shipped  |
-| Researcher profile preset              | agent-runtime/profiles           | —       | deferred — currently a `ResearcherDelegate` interface, not a preset. |
-| Council / Decompose / Pipeline drivers | agent-runtime/loops/drivers      | —       | deferred — build a custom `Driver` against the kernel interface.     |
-| `mintScopedToken` on SandboxInstance   | sandbox                          | 0.2.x   | deferred — products currently `fetch /scoped-token` directly.        |
+| Neutral contract (`AgentProfile` / `Part` / `ToolPart` / `HarnessType`) | agent-interface (`.`) | 0.9.x  | shipped  |
+| Capability layer (`harnessSupportsModel` / `reasoningEffortsFor` / `reasoningLadder`) | agent-interface (`.`) | 0.9.x | shipped |
+| `materializeProfile` / `applyWorkspacePlan` (`WorkspacePlan`) | agent-profile-materialize (`.`) | 0.1.x | shipped |
+| `runLoop` kernel                       | agent-runtime (`.`)              | 0.65.x  | shipped  |
+| Custom `Driver` on `runLoop` (refine / fanout) | agent-runtime (`.` / `/loops`) | 0.65.x | shipped — author a `Driver`; `createRefineDriver` is gone. |
+| `Scope` / `Supervisor` + combinators (`fanout`/`loopUntil`/`panel`/`verify`/`pipeline`) | agent-runtime (`/runtime`) | 0.65.x | shipped |
+| `coderProfile` preset                  | agent-runtime (`/profiles`)      | 0.65.x  | shipped  |
+| `worktreeFanout` / `gateOnDeliverable` / `patchDelivered` / `selectValidWinner` / `createWorktreeCliExecutor` (`WorktreePatchArtifact` / `DeliverableSpec`) | agent-runtime (`/loops`, also `/runtime`) | 0.65.x | shipped — the generic coder surface; `multiHarnessCoderFanout` is gone. |
+| `TraceSource` family (`createPushTraceSource` / `sandboxSessionTraceSource` / `ToolSpan`) | agent-runtime (`/runtime`) | 0.65.x | shipped — replaces `createProductionTraceSink`. |
+| `createScopeAnalyst` / online `watchTrace` + settle `analyzeTrace` | agent-runtime (`/runtime`, `/intelligence`) | 0.65.x | shipped |
+| MCP server (5 delegation tools)        | agent-runtime (`/mcp`)           | 0.65.x  | shipped  |
+| Sibling executor (default)             | agent-runtime (`/mcp`)           | 0.65.x  | shipped  |
+| Fleet executor (`TANGLE_FLEET_ID`)     | agent-runtime (`/mcp`)           | 0.65.x  | shipped  |
+| `defineAgent` manifest                 | agent-runtime (`/agent`)         | 0.65.x  | shipped  |
+| `createSurface{Improvement,Knowledge}` | agent-runtime (`/agent`)         | 0.65.x  | shipped  |
+| `runAnalystLoop`                       | agent-runtime (`/analyst-loop`)  | 0.65.x  | shipped  |
+| `createOtelExporter` / `exportTraceBundle` / `toOtelJson` | agent-runtime (`.`) + sandbox | 0.65.x / 0.8.x | shipped — `withOtelPipeline` does NOT exist. |
+| `runImprovementLoop` / `runOptimization` / `runCampaign` | agent-eval (`.`) | 0.93.x | shipped — replaces `runProductionLoop`. |
+| `runAgentMatrix` (cartesian, byAxis)   | agent-eval (`/matrix`)           | 0.93.x  | shipped  |
+| `runMultishot` / `runMultishotMatrix`  | agent-eval (`/multishot`)        | 0.93.x  | shipped  |
+| `assertRealBackend`                    | agent-eval (`.`)                 | 0.93.x  | shipped  |
+| Scorecard (`agentProfileHash`, diff)   | agent-eval (`.`)                 | 0.93.x  | shipped  |
+| Wire server (`startServer`)            | agent-eval (`/wire`)             | 0.93.x  | shipped  |
+| `FileSystemTraceStore`                 | agent-eval (`/traces`)           | 0.93.x  | shipped  |
+| `proposeFromFindings`                  | agent-knowledge (`.`)            | 1.7.x   | shipped  |
+| `applyKnowledgeWriteBlocks`            | agent-knowledge (`.`)            | 1.7.x   | shipped  |
+| `searchKnowledge` / `tokenizeQuery`    | agent-knowledge (`.`)            | 1.7.x   | shipped  |
+| Researcher profile preset              | agent-runtime (`/profiles`)      | —       | deferred — currently a `ResearcherDelegate` interface, not a preset. |
 | `pnpm doctor:adoption` CLI             | agent-eval (or new substrate)    | —       | open issue — would automate the state-machine probe above.           |
-| Matrix `aggregateBy` named scopes      | agent-eval/matrix                | 0.36.0  | shipped  |
+| Matrix `aggregateBy` named scopes      | agent-eval (`/matrix`)           | 0.93.x  | shipped  |
 
 ## Anti-patterns (cross-cutting)
 
@@ -1232,18 +1303,28 @@ subsumed its patterns.
 
 - [`agent-eval-adoption`](../agent-eval-adoption/SKILL.md) — substrate
   primitives, traces, judges, scorecard, ship-gate. Pair with this skill.
-- `@tangle-network/agent-runtime@0.23.x` README + `/loops` + `/profiles` +
-  `/mcp` + `/agent` + `/analyst-loop`. **0.23.0** adds OTEL exporter +
-  TraceId propagation through MCP subprocess + worker-sandbox trace bundle
-  export + validator span emission.
-- `@tangle-network/agent-eval@0.37.x` README + `/matrix` + `/wire` +
-  `/traces`. **0.37.0** adds judge + analyst + mutator span emission +
-  pipeline-level OTEL export.
-- `@tangle-network/agent-knowledge@1.4.x` README — `searchKnowledge`,
-  `proposeFromFindings`, `applyKnowledgeWriteBlocks`.
-- `@tangle-network/sandbox@0.2.x` SDK — `Sandbox`, `SandboxInstance`,
-  `AgentProfile`, `AgentProfileMcpServer`, `SandboxEvent`,
-  `exportTraceBundle`, `toOtelJson`.
+- `@tangle-network/agent-interface@0.10.x` — the NEUTRAL contract beneath the
+  stack: `AgentProfile`, `AgentProfileMcpServer`, `HarnessType`, `ReasoningEffort`,
+  `Part`, `ToolPart`, plus the capability layer (`harnessSupportsModel`,
+  `reasoningEffortsFor`, `reasoningLadder`). Import the profile types from here.
+- `@tangle-network/agent-runtime@0.65.x` README + `/loops` + `/runtime` +
+  `/profiles` + `/mcp` + `/agent` + `/analyst-loop` + `/intelligence`. Carries the
+  `runLoop` kernel, `Scope`/`Supervisor` + combinators, the `TraceSource` family,
+  the generic coder surface (`worktreeFanout`/`gateOnDeliverable`), and the OTEL
+  exporter. Peers `agent-eval >=0.93.0 <1.0.0`, `agent-interface ^0.10.0`,
+  `agent-knowledge ^1.7.0`, `sandbox ^0.8.0`.
+- `@tangle-network/agent-eval@0.93.x` README + `/matrix` + `/multishot` + `/wire` +
+  `/traces`. Carries `runImprovementLoop` / `runOptimization` / `runCampaign`
+  (top-level), `runAgentMatrix` (`/matrix`), `runMultishot` / `runMultishotMatrix`
+  (`/multishot`), `assertRealBackend`, scorecard.
+- `@tangle-network/agent-knowledge@1.7.x` README — `searchKnowledge`,
+  `proposeFromFindings`, `applyKnowledgeWriteBlocks`, `tokenizeQuery`.
+- `@tangle-network/agent-profile-materialize@0.1.x` — `materializeProfile`,
+  `WorkspacePlan`, `applyWorkspacePlan` (author the profile → materialize to disk).
+- `@tangle-network/sandbox@0.8.x` SDK — `Sandbox`, `SandboxInstance`,
+  `SandboxEvent`, `exportTraceBundle`, `toOtelJson`. Re-exports `AgentProfile` /
+  `AgentProfileMcpServer` from agent-interface for back-compat (prefer the
+  canonical import from agent-interface).
 
 ---
 
@@ -1262,7 +1343,7 @@ surface so consumers can swap between products without re-learning the CLI.
 | `eval:matrix` | Sweep `AgentProfile[] × persona[] × reps`. The quality dashboard. | `@tangle-network/agent-eval/multishot` `runMultishotMatrix` |
 | `eval:improve` | Analyst loop — reads production traces → findings | `@tangle-network/agent-runtime/analyst-loop` `runAnalystLoop` |
 | `eval:calibrate` | Calibrate judge models against gold data | per-product |
-| `eval:optimize` | Mutator generates N candidates + matrix scores them + gate decides | `@tangle-network/agent-eval/optimization` |
+| `eval:optimize` | Mutator generates N candidates + matrix scores them + gate decides | `@tangle-network/agent-eval` `runOptimization` (top-level — there is no `/optimization` subpath) |
 | `eval:production-loop` | Scheduled job: improve + optimize + gate + open PR. Different from `eval:optimize` — adds the cron + PR-opening layer. | per-product `scripts/evals/run-production-loop.ts` |
 | `eval:viewer` | Single-file HTML viewer of any run artifact | per-product `eval/viewer/serve.mjs` |
 
@@ -1303,9 +1384,12 @@ optional infra.
 
 **Files:**
 
-- agent-runtime 0.23+ exports `createOtelExporter()` + `withOtelPipeline()`.
-- agent-eval 0.37+ wraps judge/analyst/mutator LLM calls in spans via
-  `traceJudge`, `tracedAnalyzeTraces`, `traceMutator`.
+- agent-runtime 0.65+ exports `createOtelExporter()` (top-level). The sandbox
+  side exports `exportTraceBundle` + `toOtelJson` for worker-box trace export.
+  (`withOtelPipeline` is NOT a published export — wire the exporter directly.)
+- agent-eval 0.93+ wraps judge / analyst / mutator LLM calls in spans when an
+  OTLP endpoint is configured. Verify the exact span-wrapper names against the
+  installed dist before importing them by name.
 
 **Code template — enable end-to-end OTEL:**
 
@@ -1385,8 +1469,8 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://cloud.langfuse.com OTEL_EXPORTER_OTLP_HEADER
 
 **Cross-references:**
 
-- agent-runtime 0.23.0 OTEL exporter source.
-- agent-eval 0.37.0 judge + analyst + mutator span wrappers.
+- agent-runtime 0.65.x `createOtelExporter` source.
+- agent-eval 0.93.x judge + analyst + mutator span wrappers.
 - `@tangle-network/sandbox` `exportTraceBundle` + `toOtelJson` helpers.
 - Phase 7 multishot — every conversation step emits spans; matrix-level
   spans wrap the cell execution.
