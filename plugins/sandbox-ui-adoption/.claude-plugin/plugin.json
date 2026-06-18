@@ -1,0 +1,8 @@
+{
+  "name": "sandbox-ui-adoption",
+  "description": "Adopt the Tangle design system from @tangle-network/sandbox-ui + @tangle-network/brand in a product: Heading / PageHeader / SectionTitle / PageShell primitives, role-to-size type scale, DashboardLayout in-app logo wiring, Tangle Quiet dark theme, and the monorepo version-skew gate.",
+  "author": {
+    "name": "Tangle Network",
+    "email": "hello@tangle.tools"
+  }
+}
