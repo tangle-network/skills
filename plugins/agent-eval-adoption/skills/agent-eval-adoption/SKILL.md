@@ -1,6 +1,6 @@
 ---
 name: agent-eval-adoption
-description: "Substrate-primitive reference for adopting @tangle-network/agent-eval (0.95.x) + @tangle-network/agent-runtime (0.70.x) in a product, over the @tangle-network/agent-interface (~0.10) neutral contract layer (AgentProfile / HarnessType / ReasoningEffort / Part + the capability layer harnessSupportsModel / reasoningEffortsFor). Covers defineAgent manifest, defineAgentEval() app helper, runLoop driven loops + topology strategies (refine / sampleThenRefine / depth+breadth), worktree coder fanout (worktreeFanout) + gateOnDeliverable, MCP delegation tools, TraceSource trace capture, scorecard + ship-gate CI, held-out promotion (runImprovementLoop / proposeAutomatedPullRequest + HeldOutGate), cross-profile matrix benchmarks (runAgentMatrix), analyst-loop, assertRealBackend Phase A guard, AgentProfile materialization (@tangle-network/agent-profile-materialize). PAIRS WITH: agent-stack-adoption (9-phase pipeline shape that consumes these primitives), agent-eval (substrate footgun bible + canonical product-agent file layout), eval-agent (LLM-as-judge rubric generation specifically)."
+description: "Substrate-primitive reference for adopting the current Tangle agent stack in a product. Covers defineAgent manifest, runLoop driven loops, TraceSource capture, scorecard + ship-gate CI, held-out promotion via runImprovementLoop, cross-profile matrix benchmarks, analyst-loop, and assertRealBackend Phase A guard. Before copying version or API names, run scripts/check-substrate-versions.sh and read references/current-substrate.md. PAIRS WITH: agent-stack-adoption (9-phase pipeline shape that consumes these primitives), agent-eval (substrate footgun bible + canonical product-agent file layout), eval-agent (LLM-as-judge rubric generation specifically)."
 ---
 
 # Agent Eval Adoption — substrate primitives for product wiring
@@ -9,39 +9,48 @@ description: "Substrate-primitive reference for adopting @tangle-network/agent-e
 
 | If you are... | Read |
 |---|---|
-| Working IN the agent-eval substrate repo, calling its primitives correctly, OR setting up the canonical `eval/` folder + 3 pnpm scripts in a product | `agent-eval` |
-| Wiring the full stack end-to-end across 9 phases (single composer → ingestion → improvement-loop → MCP delegation → researcher → eval scenarios → viewer → matrix → live smoke → CI cron) | `agent-stack-adoption` — the pipeline shape that consumes the primitives THIS skill defines |
+| Working IN the agent-eval substrate repo, calling its primitives correctly, OR setting up the canonical `eval/` folder + 3 pnpm scripts in a product | `agent-eval` (project skill, auto-loaded in agent-eval repo) |
+| Wiring the full 4-package stack end-to-end across 9 phases (single composer → ingestion → production-loop → MCP delegation → researcher → eval scenarios → viewer → matrix → live smoke → CI cron) | `agent-stack-adoption` — the pipeline shape that consumes the primitives THIS skill defines |
 | Building an LLM-as-judge with rubrics generated from reference material | `eval-agent` — narrower, judge-component focused |
-| Looking up specific substrate primitives (defineAgent, runLoop, MCP delegation, TraceSource capture, assertRealBackend, scorecard, analyst-loop, runAgentMatrix) for adoption | **THIS skill** |
+| Looking up specific substrate primitives (defineAgent, runLoop, MCP delegation, TraceSource, assertRealBackend, scorecard, analyst-loop, runAgentMatrix) for adoption | **THIS skill** |
 
 Use this skill when wiring `@tangle-network/agent-eval` into a product repo, or
-when reviewing such a wiring. It encodes the canonical shape used across
-vertical agents (e.g. a content agent, a tax agent, a research agent, a
-code-builder) and the substrate, which is now ~6 packages:
-`@tangle-network/agent-interface` (the neutral contract — AgentProfile /
-AgentProfileMcpServer / HarnessType / ReasoningEffort / Part / ToolPart plus
-the capability layer `harnessSupportsModel` / `reasoningEffortsFor`),
-`@tangle-network/agent-runtime`, `@tangle-network/agent-eval`,
-`@tangle-network/agent-knowledge`, `@tangle-network/agent-profile-materialize`
-(turns an `AgentProfile` into on-disk harness shapes), and
-`@tangle-network/sandbox` (which re-exports the agent-interface contract types
-for back-compat). Throughout, `your-agent` / `your-product` stand in for
-whatever product you are wiring; the file paths shown are an illustrative
-layout, not a fixed contract.
+when reviewing such a wiring. It encodes the canonical shape shipped across the
+vertical agents (`creative-agent`, `tax-agent`, `legal-agent`, `gtm-agent`,
+`agent-builder`, `physim`) and the substrate.
 
-> **Contract layer — single source of truth.** `AgentProfile`,
-> `AgentProfileMcpServer`, `HarnessType`, `ReasoningEffort`, `Part`, and
-> `ToolPart` are owned by `@tangle-network/agent-interface`. Import them from
-> there. `@tangle-network/sandbox` re-exports them for back-compat, so existing
-> `from '@tangle-network/sandbox'` imports keep working — but new code should
-> name agent-interface as the source. (Note: a type also called `AgentProfile`
-> is exported from `@tangle-network/agent-eval` — that one is a DIFFERENT,
-> narrow eval-side scorecard key, not the harness profile. Don't conflate them;
-> see §5 scorecard.) The capability layer lives alongside the types:
-> `harnessSupportsModel(harness, model)`, `reasoningEffortsFor(harness)`, and
-> the `reasoningLadder` ordering
-> `none → minimal → low → medium → high → xhigh → ultracode` — use these to
-> gate model/effort choices instead of hard-coding per-harness tables.
+- **Current package truth lives in
+  `references/current-substrate.md`; re-run `scripts/check-substrate-versions.sh`
+  before changing versions.**
+- **`@tangle-network/agent-interface` (0.10.x)** — the NEUTRAL contract / single
+  source of truth. Owns `AgentProfile`, `AgentProfileMcpServer`, `HarnessType`,
+  `ReasoningEffort`, `Part` / `ToolPart` / `ToolState`, and the capability layer
+  (`harnessSupportsModel`, `reasoningEffortsFor`). Every other package normalizes
+  into these types; `@tangle-network/sandbox` re-exports them for back-compat.
+- **`@tangle-network/agent-runtime` (0.70.x)** — the loop kernel, drivers,
+  profile data, MCP delegation server, `defineAgent`, surface adapters, and
+  `TraceSource` family.
+- **`@tangle-network/agent-eval` (0.95.x)** — scorecard, ship-gate, analyst loop,
+  held-out gate, matrix, backend-integrity guard, `runOptimization`, and
+  `runImprovementLoop`.
+- **`@tangle-network/agent-profile-materialize` (0.1.0)** — the shared per-harness
+  materializer (`materializeProfile` / `WorkspacePlan` / `applyWorkspacePlan`)
+  that turns one `AgentProfile` into a concrete harness workspace.
+- **`@tangle-network/agent-knowledge` (1.7.x)** — optional peer: knowledge writes
+  + researcher fanout.
+
+### Capability layer — model/effort negotiation
+
+`@tangle-network/agent-interface` ships the capability functions that gate which
+harness can run which model at which thinking depth:
+
+- `harnessSupportsModel(harness, model)` — does this harness expose that model.
+- `reasoningEffortsFor(harness)` — the supported thinking tiers for a harness.
+- The `ReasoningEffort` ladder is
+  `none → minimal → low → medium → high → xhigh → ultracode`. A backend without a
+  matching native tier clamps to its nearest (e.g. codex maps
+  `xhigh` / `ultracode` → `high`). Author the effort you want; the materializer
+  reconciles it per harness — do not hard-code harness-specific effort strings.
 
 A fresh adoption is correct iff every block in the **Acceptance checklist** at
 the bottom holds against the repo. Less than that ships blind evals or
@@ -53,14 +62,13 @@ Wrap the real product workflow. Do not build a parallel toy path.
 
 ```txt
 production chat
-  -> TraceSource (ToolSpan stream + RunRecord)   ← createPushTraceSource (owned loop)
-                                                    or sandboxSessionTraceSource (box)
+  -> TraceSource capture + OTLP / RunRecord persistence
   -> persisted records.jsonl + traces.jsonl + agent-profile cells
   -> assertRealBackend  ← refuses blind runs before the ship-gate
   -> scorecard append   ← (scenario × profileHash) timeline
   -> ship-gate          ← composite + per-persona threshold
   -> analyst-loop       ← findings → knowledge / improvement adapters
-  -> improvement-loop   ← held-out gate → auto-PR (runImprovementLoop)
+  -> improvement-loop   ← held-out gate → auto-PR
 ```
 
 Everything below is a slot in this pipeline. The numbering is the order a
@@ -81,9 +89,9 @@ verify the whole campaign loop — the 9 patterns below are that loop:
 3. Define mutable surfaces explicitly (prompt components, tool docs, workflow
    policy, retrieval corpus, generated code, product adapters) — pattern 1
    (`defineAgent`).
-4. Search over those surfaces (GEPA-style reflection via `gepaProposer`, run
-   through `runImprovementLoop`); every candidate gets a stable id + rationale —
-   pattern 8 (`runEvalCampaign`).
+4. Search over those surfaces (GEPA-style reflection or `runOptimization`);
+   every candidate gets a stable id + rationale — pattern 8
+   (`runImprovementLoop` wraps the held-out promotion shell).
 5. Apply each candidate in an isolated git worktree or branch, never in-place
    against unrelated user work — `createSurfaceImprovementAdapter`.
 6. Rerun train/dev/holdout through the same product adapter. The holdout gate
@@ -104,9 +112,10 @@ Minimum surface area in a product repo:
 - `.evolve/` (or equivalent) — stores findings, reports, candidate ids, traces,
   promotion decisions.
 
-If any of the above is missing, the loop is not closed.
+If any of the above is missing, the loop is not closed — see
+`feedback_loop_closure_is_empirical` in operator memory.
 
-## Driven loops — `runLoop` + driver values + the coder profile
+## Agentic loops — `runAgentic`, strategies, and trace capture
 
 The substrate ships a topology-agnostic loop kernel in
 `@tangle-network/agent-runtime/loops`. The kernel orchestrates around
@@ -114,37 +123,65 @@ the sandbox SDK: each iteration is `sandboxClient.create({ backend: { profile } 
 + `box.streamPrompt`. The kernel owns iteration accounting, concurrency,
 abort propagation, cost aggregation, and trace emission. The driver owns
 topology, the validator owns scoring, the output adapter owns event-stream
-decode.
+decode. For normal product adoption, use the higher-level strategy runner and
+drop to raw `runLoop` only when you are authoring a custom `Driver`.
 
 ```ts
-import { runLoop, refine, sampleThenRefine, gateOnDeliverable } from '@tangle-network/agent-runtime/loops'
-import { coderProfile } from '@tangle-network/agent-runtime/profiles'
+import { refine, runAgentic } from '@tangle-network/agent-runtime/loops'
 
-const { spec, output } = coderProfile({ harness: 'claude-code', task })
-const validator = gateOnDeliverable(deliverableSpec)   // see "coder generics" below
-const result = await runLoop({
+const result = await runAgentic({
+  surface,                         // real product adapter: open/tools/call/score/close
   task,
-  agentRuns: [spec],                         // round-robin across N specs for ensemble
-  output,
-  validator,
-  driver: refine,                            // built-in driver value (not a factory)
-  ctx: { sandboxClient, traceEmitter, signal },
+  routerBaseUrl,
+  routerKey,
+  model: 'anthropic/claude-sonnet-4-5',
+  strategy: refine,                // import/use sample for best-of-N
+  budget: 3,
 })
 ```
 
-### Foundational primitives — the coder profile
+### Foundational primitives — there is no "coder" role, only a profile + a gate
 
-`@tangle-network/agent-runtime/profiles` ships a code-completion profile preset:
+The mental model that the old `coderProfile()` factory / `createCoderValidator`
+implied is GONE. The §1.5 law applies: you do not instantiate a "coder agent" —
+you **author an `AgentProfile`**, run it (often via a worktree-CLI executor) to
+get a raw `WorktreePatchArtifact`, and **gate** the artifact with a
+`DeliverableSpec`. Concretely:
 
-- **`coderProfile`** — task-completion (`coderProfile`, `coderTaskToPrompt`,
-  `DEFAULT_CODER_SYSTEM_PROMPT`, `CoderTask`). Bundles an `AgentProfile`
-  (default harness selectable: `claude-code`, `codex`, `opencode`), prompt
-  formatting, and the output adapter. There is **no separate "coder role"
-  surface anymore** — you author an `AgentProfile`, get a raw
-  `WorktreePatchArtifact` out of the worktree executor, and gate it with the
-  generic `gateOnDeliverable(DeliverableSpec)` (next section). The profiles
-  subpath also ships a UI-auditor profile (`uiAuditorProfile` +
-  `createUiAuditorValidator`).
+- **`coderProfile`** (`@tangle-network/agent-runtime/profiles`) — now an
+  `AgentProfile` *constant* (no longer a factory), the author-the-profile DATA
+  for code-modification tasks. Harness is chosen at run time, not baked into the
+  profile. Pair it with `DEFAULT_CODER_SYSTEM_PROMPT` / `coderTaskToPrompt` from
+  the same subpath.
+- **`createWorktreeCliExecutor(options)`** — the executor that runs a profile in
+  an isolated git worktree and returns a raw `WorktreePatchArtifact`.
+- **`gateOnDeliverable(inner, deliverable)`** — wraps any `Executor` so its
+  artifact must pass a `DeliverableSpec` (a plain `check(artifact) => boolean`)
+  to count as delivered. The selector is never a judge.
+- **`patchDelivered(opts?)`** — the mechanical patch gate as a
+  `DeliverableSpec<WorktreePatchArtifact>` (diff size, forbidden paths,
+  test + typecheck verdicts run by the spec itself). This is the replacement for
+  the old `createCoderValidator` / `coderDeliverable`; slot any custom
+  `DeliverableSpec` in as DATA.
+- **`worktreeFanout(options)`** — the replacement for
+  `multiHarnessCoderFanout` / `worktreeCoderFanout`: N profiles/harnesses fan out
+  in parallel worktrees, each gated on `deliverable` (defaults to
+  `patchDelivered(opts)`), winner chosen by the shared valid-only
+  `selectValidWinner` (never a judge).
+- **`selectValidWinner`** — the canonical best-gated-valid winner strategy
+  (ungated patches never win); reused everywhere a winner is picked.
+
+```ts
+import {
+  createWorktreeCliExecutor, gateOnDeliverable, patchDelivered, worktreeFanout,
+} from '@tangle-network/agent-runtime/loops'
+import { coderProfile } from '@tangle-network/agent-runtime/profiles'
+
+const executor = gateOnDeliverable(
+  createWorktreeCliExecutor({ profile: coderProfile, harness: 'claude-code', task }),
+  patchDelivered({ maxDiffLines: 400 }),   // the deliverable IS the gate, passed as DATA
+)
+```
 
 The **researcher** primitive is NOT a shipped profile preset. It's a
 `ResearcherDelegate` interface (`src/mcp/delegates.ts`) consumers wire against
@@ -154,67 +191,25 @@ construction. The optional `@tangle-network/agent-knowledge` peer ships a
 `multiHarnessResearcherFanout` consumers can adapt; the bin (`agent-runtime-mcp`)
 auto-wires it when the peer is installed.
 
-### Topologies — driver VALUES, not factories
+### Topologies — built-in strategies + shipped combinators
 
-The driver-factory names (`createRefineDriver` / `createFanoutVoteDriver` /
-`createDynamicDriver` + `createSandboxPlanner`) no longer exist. The loop
-strategies are now exported as ready-made VALUES (or builders) from
-`@tangle-network/agent-runtime/loops`:
+`@tangle-network/agent-runtime/loops` exports the current public surface:
 
-- **`refine`** — single-task-per-iteration, feed the prior output back into the
-  prompt, stop on validator success or iteration cap. Use for: incremental
-  patches, document revision, anything monotonic. (`adaptiveRefine` is the
-  budget-aware variant.)
-- **`sample`** — N independent attempts, no feedback between them.
-- **`sampleThenRefine`** — sample a population, then refine the best. The
-  workhorse "breadth then depth" driver.
-- **`depthStrategy` / `breadthStrategy`** — the explicit depth-vs-breadth pair
-  used in the depth/breadth ablations.
+- **`sample`** — N independent attempts, keep the best-verifying one.
+- **`refine`** — attempt, observe the trace, steer the next attempt, repeat.
+- **`sampleThenRefine` / `adaptiveRefine`** — shipped mixed strategies for
+  explore-then-exploit and branch-when-stuck runs.
+- **`worktreeFanout(options)`** — the code-specific fanout composition: N
+  profiles/harnesses in parallel worktrees, each gated by a `DeliverableSpec`,
+  winner chosen by `selectValidWinner`.
+- **`fanout`, `panel`, `verify`, `pipeline`, `loopUntil`, `widen`** — generic
+  combinator shapes for custom agent compositions.
 
-For the reactive (non-round-synchronous) substrate, prefer the
-`Scope`/`Supervisor` combinators — `fanout`, `loopUntil`, `widen`, `panel`,
-`verify`, `pipeline` — plus `definePersona` / `runPersonified` /
-`defineStrategy` / `runAgentic`, all exported from
-`@tangle-network/agent-runtime/loops`. These are the content-free generic
-combinators; `pipeline` IS the typed specialist-handoff topology and `panel`
-IS the judge-panel topology — they are shipped, not deferred. Build a custom
-`Driver` against the kernel interface only when none of these compose to the
-shape you need; do NOT vendor a forked kernel.
-
-### Coder generics — author a profile, gate a deliverable
-
-The old coder-role surface (`coderProfile()` factory as the only path,
-`createCoderValidator`, `multiHarnessCoderFanout` / `worktreeCoderFanout`,
-`coderDeliverable`, `createDefaultCoderDelegate`) has been replaced by generic,
-role-free primitives — exported from `@tangle-network/agent-runtime/loops`
-(the published `src/runtime/` barrel), NOT the package root:
-
-- **`worktreeFanout`** (`WorktreeFanoutOptions`) — fan an authored `AgentProfile`
-  across N CLI harnesses, each on its own git worktree; the best-valid patch
-  wins. Replaces `multiHarnessCoderFanout` / `worktreeCoderFanout`.
-- **`createWorktreeCliExecutor`** (`WorktreeCliExecutorOptions`) — the leaf
-  executor: runs a CLI harness (claude / codex / opencode) on a git worktree and
-  returns a raw `WorktreePatchArtifact`.
-- **`gateOnDeliverable(DeliverableSpec)`** — the generic validator. Replaces
-  `createCoderValidator`. You hand it a `DeliverableSpec` (diff-size /
-  forbidden-path / test+typecheck constraints) and it gates any patch.
-- **`patchDelivered`** (`PatchDeliverableOptions`) — the "is there a real,
-  non-empty patch" predicate (exported from `/loops`). Replaces
-  `coderDeliverable`. The lower-level patch helpers `isNonEmptyPatch` /
-  `countDiffLines` / `touchedPathsFromPatch` / `touchesSecretPath` /
-  `runCoderChecks` exist in `src/runtime/supervise/patch-checks.ts` but are
-  NOT re-exported through the `/loops` barrel as of agent-runtime 0.70.0 —
-  verify against the installed dist before importing them by name (or call
-  through `patchDelivered`, which folds them in).
-- **`selectValidWinner`** — best-valid-score selection (ties → earliest).
-- **`detachedSessionDelegate`** (`@tangle-network/agent-runtime/mcp`) — the
-  default coder delegate for the MCP server. Replaces
-  `createDefaultCoderDelegate`.
-
-Mental model: there is **no coder role**. You author an `AgentProfile`, run it
-through a worktree executor to get a raw `WorktreePatchArtifact`, and gate that
-artifact with `gateOnDeliverable`. The same generics serve any "produce a
-validated artifact" task, not just code.
+Deferred (NOT shipped — do not pretend they exist in adoption code):
+**Council** (judge-of-judges over fanout outputs), **Decompose** (planner
+splits task → subtasks → re-aggregate). When a product reaches for one, build a custom
+`Driver` against the kernel's interface (`src/loops/types.ts:Driver`); do
+NOT vendor a forked kernel.
 
 ### Gotchas
 
@@ -229,55 +224,6 @@ validated artifact" task, not just code.
   the same task, pass two specs and read winner index from `result.winner`.
 - The output adapter MUST return a typed value or throw. A `null` /
   `undefined` adapter return silently drops the iteration from scoring.
-
-### Surface optimization — `runImprovementLoop` (identity-gated)
-
-The standalone `optimizePrompt` convenience wrapper is GONE. Drive the
-improvement loop directly through agent-eval's `runImprovementLoop`
-(`@tangle-network/agent-eval/contract`) with the proposer that matches your
-surface:
-
-- **Text surfaces** (a system prompt, planner prompt, judge rubric) →
-  `gepaProposer` (`@tangle-network/agent-eval/contract`): reflective TEXT
-  mutation under a held-out gate. (`runImprovementLoop` defaults to
-  `gepaProposer` when no `proposer` is passed.)
-- **Code / worktree surfaces** → `improvementDriver`
-  (`@tangle-network/agent-runtime`, the package root) with a
-  `CandidateGenerator`: `reflectiveGenerator` (cheap, shots=1, applies
-  pre-drafted patches) or `agenticGenerator` (full agentic, shots=N, runs a
-  real coding harness inside the candidate worktree and re-tries on
-  `commandVerifier` failure).
-
-The gate is supplied separately — `heldOutGate` (default) or
-`defaultProductionGate` (hardened) — and the loop returns the BASELINE surface
-unless the gate's decision is `ship`.
-
-**Identity-gated by construction** — the value, not a footnote. The loop runs
-evals, proposes candidates, and the held-out gate compares candidate vs
-baseline; the returned surface stays the baseline UNLESS the gate decides
-`ship`. So registering a surface for optimization can never regress it — it only
-improves when held-out data earns it. Wiring a surface up is therefore always
-safe.
-
-The reusable recipe for "build a `[SURFACE]` optimization target": extract the
-surface to a constant → scenarios from the surface's own domain → judge
-dimensions that score its output → pick the proposer (`gepaProposer` for text /
-`improvementDriver` for code) → `runImprovementLoop` + held-out gate. Gotchas,
-learned the hard way:
-
-- **`gepaProposer` mutates TEXT only**, and its only structural guard is `##` H2
-  headings (`preserveSections`) + `maxSentenceEdits`. Make load-bearing sections
-  real `##` headings; treat the output schema/contract as fixed code GEPA never
-  touches. It does NOT optimize code / knowledge surfaces — those are the
-  `improvementDriver` / agent-knowledge paths.
-- **Scenarios must be domain-real** — derive them from the surface's own traces /
-  ground truth, never an unrelated corpus. Cross-domain examples are noise that
-  the gate will (correctly) refuse to promote on.
-- **Extend, don't fork.** If the product already wires `runImprovementLoop`
-  (section 7) for one surface, add the new surface as another target in that
-  harness — do NOT bolt on a parallel improvement loop beside it.
-- The domain runner is the only seam; report cost inside it so
-  `assertRealBackend` (section 4) sees real activity.
 
 ## MCP delegation tools — `@tangle-network/agent-runtime/mcp`
 
@@ -323,12 +269,12 @@ the same surface in prod and eval.
 
 Compose at runtime, never declare statically in the SDK profile (the
 sandbox-SDK's `AgentProfileMcpServer.env` doesn't template the
-sandbox-scoped key). Reference pattern (illustrative) —
-`your-agent/src/server/sandbox/index.ts`: mint the sandbox-scoped key per
-session and build the MCP server block from it:
+sandbox-scoped key). Reference impl from `gtm-agent/src/lib/.server/sandbox/index.ts:104`:
 
 ```ts
-// canonical contract source; @tangle-network/sandbox re-exports it for back-compat
+// AgentProfileMcpServer (and AgentProfile, HarnessType, etc.) are owned by
+// @tangle-network/agent-interface — the neutral contract layer. @tangle-network/sandbox
+// re-exports them for back-compat, but import from agent-interface for new code.
 import type { AgentProfileMcpServer } from '@tangle-network/agent-interface'
 
 const DELEGATION_MCP_SERVER_KEY = 'agent-runtime-delegation'
@@ -423,11 +369,11 @@ not the agent's behaviour.
 
 ### The pattern
 
-Export a single composer from your server-side sandbox module and import it
-from both the chat handler AND the eval canonical runner.
+Export a single composer from `src/lib/.server/sandbox/` and import it from
+both the chat handler AND the eval canonical runner.
 
 ```ts
-// your-agent/src/server/sandbox/index.ts
+// src/lib/.server/sandbox/index.ts
 export function composeProductionAgentProfile(
   options: ComposeProductionAgentProfileOptions = {},
 ): AgentProfile {
@@ -441,8 +387,8 @@ export function composeProductionAgentProfile(
 ```
 
 ```ts
-// your-agent/eval/canonical.ts — DO import the production composer
-import { composeProductionAgentProfile } from '../src/server/sandbox'
+// eval/canonical.ts — DO import the production composer
+import { composeProductionAgentProfile } from '../src/lib/.server/sandbox'
 
 const profile = composeProductionAgentProfile({ sandboxApiKey: process.env.TANGLE_API_KEY })
 // Pass `profile` into the sandbox client used by `runLoop` or the
@@ -456,9 +402,9 @@ const profile = composeProductionAgentProfile({ sandboxApiKey: process.env.TANGL
 Catch drift the moment the eval and production composers diverge:
 
 ```ts
-// your-agent/eval/profile-parity.test.ts
+// eval/profile-parity.test.ts
 import { describe, it, expect } from 'vitest'
-import { composeProductionAgentProfile } from '../src/server/sandbox'
+import { composeProductionAgentProfile } from '../src/lib/.server/sandbox'
 
 describe('eval AgentProfile mirrors production', () => {
   it('mounts the delegation MCP server', () => {
@@ -493,76 +439,64 @@ describe('eval AgentProfile mirrors production', () => {
   when reality is "agent never reached the model." Surface backend errors
   as harness-level failures, not as zero-score scenario results.
 
-## Cross-profile matrix — `runAgentMatrix` (`@tangle-network/agent-eval/matrix`)
+## Cross-profile matrix — `runAgentMatrix`
 
-`@tangle-network/agent-eval/matrix` (also re-exported from the package root)
-takes a cartesian of named **axes** × replicates, runs each cell through your
-executor, and aggregates by axis. Use for: cross-provider benchmarking ("does
-one model beat another on persona X?"), reasoning-effort ablations, harness
-selection ("which coder harness wins on this repo?").
-
-The axis API is **declarative `MatrixAxis[]`**, not extractor functions: each
-axis is `{ name, values: [{ id, value }] }`. The kernel builds the cartesian in
-declared order, expands `reps`, and hands each `runCell` a `MatrixCell` whose
-`axes` records the chosen `{ id, value }` per axis. `runCell` returns a
-`CellResult` — `{ output, verdict, costUsd, durationMs }`.
+`@tangle-network/agent-eval/matrix` exports `runAgentMatrix` (the runner is
+shipped, not just the types) plus `MatrixScenario`, `MatrixAxes`, and
+`axisExtractors`. It sweeps scenarios × profiles × replicates and aggregates by
+axis. Use for: cross-provider benchmarking ("does claude-sonnet-4-7 beat
+deepseek-chat on persona X?"), thinking-level ablations, harness selection
+("which coder harness wins on this repo?").
 
 ```ts
-import {
-  runAgentMatrix, buildByAxis,
-  type MatrixAxis, type MatrixCell, type CellResult,
+import type {
+  MatrixScenario, RunAgentMatrixOptions,
 } from '@tangle-network/agent-eval/matrix'
-import type { AgentProfile } from '@tangle-network/agent-interface'
-
-const profileAxis: MatrixAxis<AgentProfile> = {
-  name: 'profile',
-  values: [
-    { id: 'claude', value: claudeProfile },
-    { id: 'codex',  value: codexProfile },
-  ],
-}
+import { axisExtractors } from '@tangle-network/agent-eval/matrix'
 
 const result = await runAgentMatrix({
-  axes: [profileAxis /*, modelAxis, effortAxis, scenarioAxis ... */],
-  reps: 3,
-  runCell: async (cell: MatrixCell): Promise<CellResult<Output>> => {
-    const profile = cell.axes.profile.value as AgentProfile
-    const { spec, output } = coderProfile({ harness: profile, task })
-    const loopResult = await runLoop({
-      task, agentRuns: [spec], output, validator, driver,
-      ctx: { sandboxClient },
-    })
-    return {
-      output:     loopResult.winner?.output as Output,
-      verdict:    loopResult.winner?.verdict ?? { score: 0, valid: false },
-      costUsd:    loopResult.costUsd,
-      durationMs: loopResult.durationMs,
-    }
+  scenarios,                               // MatrixScenario<Task>[]
+  profiles: [claudeProfile, codexProfile], // AgentProfile[] from @tangle-network/agent-interface
+  runCell: async (cell, signal) => {
+    // cell carries { scenario, profile, repIndex, axes }. You spawn the
+    // sandbox, drive the loop, score, return { score, costUsd, output? }.
+    const loopResult = await runLoop({ task: cell.scenario.task, agentRuns: [{ profile: cell.profile, harness: cell.axes.harness }], output, validator, driver, ctx: { sandboxClient, signal } })
+    return { score: loopResult.winner?.verdict.score ?? 0, costUsd: loopResult.costUsd, output: loopResult.winner?.output }
   },
+  axes: {
+    harness: axisExtractors.harness,            // built-in
+    model: axisExtractors.model,
+    thinkingLevel: axisExtractors.thinkingLevel,
+    persona: (profile) => profile.metadata?.persona as string | undefined,
+  },
+  reps: 3,
+  maxConcurrency: 4,
+  costCeiling: 5.0,                          // abort cleanly when cumulative cost crosses $5
 })
 ```
 
 ### Aggregation
 
-`result.byAxis` is `Record<axisName, Record<axisValue, AxisSummary>>` —
-`AxisSummary` carries `passRate`, `meanScore`, `p50Score`, `p90Score`,
-`cells`, `totalCostUsd`. Use `buildByAxis(cells, axes, aggregateBy)` to
-re-aggregate over a subset of axes. Do NOT recompute by hand from
-`result.cells[]` — the aggregator already handles thrown / errored cells
-correctly (a cell whose `runCell` threw contributes 0 to passRate AND
-meanScore).
+`result.byAxis` carries `AxisSummary[]` per axis (passRate, meanScore,
+totalCostUsd, sampleSize). `result.summary` carries totals +
+`costCeilingReached` + `aborted` + `skippedCells`. Use these for the
+public benchmark dashboard; do NOT recompute by hand from `cells[]` —
+the substrate's aggregator already handles `skipped` correctly.
 
 ### Gotchas
 
-- `runCell` may throw; the matrix captures the throw on `CellResult.error`
-  and continues the rest of the run. Errored cells count as 0.
-- Use `filter` to prune cells from the cartesian BEFORE rep expansion (e.g.
-  drop model×harness combinations `harnessSupportsModel` rejects).
+- `runCell` may throw; the matrix captures throws as `CellResult.error`
+  WITHOUT aborting the rest of the run. Partial completion is observable
+  via `summary.skippedCells`.
+- `costCeiling` is a soft abort — in-flight cells finish; new ones don't
+  start. Set it conservatively for paid-backend matrices.
+- `signal` propagates a child `AbortSignal` into your `runCell`; honour
+  it or the matrix can't abort cleanly.
 
 ## Live trace flow — the production-to-evolution pipeline
 
 The same trace surface a chat turn emits is the substrate the analyst loop
-and production loop consume. Wire once; every flow downstream is free.
+and improvement loop consume. Wire once; every flow downstream is free.
 
 ```txt
 runLoop / runChatThroughRuntime
@@ -570,12 +504,11 @@ runLoop / runChatThroughRuntime
        └─ output.parse(events)        — typed Output (CoderOutput, research items, chat finalText)
             └─ validator.validate     — DefaultVerdict { score, valid, error? }
                  └─ trace events       — LoopTraceEvent + RuntimeStreamEvent
-                      └─ TraceSource     — createPushTraceSource (owned loop) /
-                                            sandboxSessionTraceSource (box) → ToolSpan + RunRecord
+                      └─ ingestion mount — TraceSource → OTLP + RunRecord
                            └─ .production-data/traces/events.ndjson
-                                └─ analyst loop — runAnalystLoop → FindingsStore
-                                     └─ improvement loop — held-out gate + re-eval
-                                          └─ ship — proposeAutomatedPullRequest auto-PR
+                                └─ analyst pass — AnalystRegistry.run → FindingsStore
+                                     └─ improvement-loop — held-out gate + re-eval
+                                          └─ ship — optional auto-PR
 ```
 
 Every arrow is a substrate seam, not a product hand-roll. Skipping any
@@ -590,19 +523,19 @@ The substrate validates every surface against disk at module load —
 `AgentManifestError` lists the offenders, so a misconfigured manifest fails at
 startup, not at the first finding.
 
-Illustrative `your-agent/eval/agent.config.ts`:
+`creative-agent/eval/agent.config.ts:32`:
 
 ```ts
 import { DEFAULT_TRACE_ANALYST_KINDS } from '@tangle-network/agent-eval'
 import { defineAgent } from '@tangle-network/agent-runtime/agent'
 
-export const yourAgent = defineAgent({
-  id: 'your-agent',
+export const creativeAgent = defineAgent({
+  id: 'creative-agent',
   repoRoot: REPO_ROOT,
   surfaces: {
-    systemPrompt: 'src/server/agent-prompt/skills',
+    systemPrompt: 'src/lib/.server/agent-prompt/skills',
     tools: 'tools',
-    rubric: 'eval/lib/rubric.ts',
+    rubric: 'eval/lib/creative-rubric.ts',
     knowledge: '.agent-knowledge',
     personas: 'eval/scenarios',
   },
@@ -621,10 +554,10 @@ export const yourAgent = defineAgent({
 })
 ```
 
-The same manifest shape repeats across every vertical agent — only the
-surface paths differ (a content agent points `systemPrompt` at its brand
-skills, a tax agent at its filing skills, and so on). One manifest file per
-product, colocated with its `eval/` folder.
+Cross-vertical references (same shape, different surface paths):
+`tax-agent/tests/eval/agent.config.ts:33`,
+`legal-agent/tests/eval/agent.config.ts`,
+`gtm-agent/eval/agent.config.ts`.
 
 ### Gotchas
 
@@ -637,52 +570,36 @@ product, colocated with its `eval/` folder.
 - Don't omit `analystKinds` to "default it later" — the loop probes
   `manifest.analystKinds`; an empty array means zero findings.
 
-## 2. Analyst loop (`runAnalystLoop`)
+## 2. Analyst pass (`AnalystRegistry` + `FindingsStore`)
 
 Capture is half the system. The other half is consumption: every run must
 produce *durable findings* (not prose), diff against the prior run, and
 propose mutations to either the knowledge base or a mutable surface (system
 prompt, tool docs, rubric, personas).
 
-Illustrative `your-agent/eval/analyst-loop.ts`:
+`creative-agent/eval/analyst-loop.ts:121`:
 
 ```ts
 import {
   AnalystRegistry, DEFAULT_TRACE_ANALYST_KINDS,
   FindingsStore, createTraceAnalystKind,
-} from '@tangle-network/agent-eval'
+} from '@tangle-network/agent-eval/analyst'
 import { OtlpFileTraceStore } from '@tangle-network/agent-eval/traces'
-import { runAnalystLoop } from '@tangle-network/agent-runtime/analyst-loop'
-import {
-  createSurfaceImprovementAdapter,
-  createSurfaceKnowledgeAdapter,
-} from '@tangle-network/agent-runtime/agent'
-import { proposeFromFindings, applyKnowledgeWriteBlocks } from '@tangle-network/agent-knowledge'
 
-const registry = new AnalystRegistry()
-for (const spec of yourAgent.analystKinds) {
+const registry = new AnalystRegistry({ chat, log })
+for (const spec of creativeAgent.analystKinds) {
   registry.register(createTraceAnalystKind(spec, { ai, model }))
 }
 const findingsStore = new FindingsStore('.evolve/findings/findings.jsonl')
 const traceStore   = new OtlpFileTraceStore({ path: `${runDir}/otlp-spans.jsonl` })
 
-const knowledgeAdapter   = createSurfaceKnowledgeAdapter({ knowledgeRoot }, { proposeFromFindings, applyKnowledgeWriteBlocks })
-const improvementAdapter = createSurfaceImprovementAdapter({
-  surfaces: yourAgent.surfaces, repoRoot,
-  mode: yourAgent.autoApply.improvement.mode,    // 'open-pr' | 'write' | 'none'
-  ghRepo: 'your-org/your-agent',
-  draftPatch: (input) => draftPatchWithLlm(input, ai, model),
+const result = await registry.run(runId, { traceStore }, {
+  budget: { totalUsd: 1.50 },
+  tags: { commit, surface: creativeAgent.id },
 })
+await findingsStore.append(runId, result.findings)
 
-const result = await runAnalystLoop({
-  runId, registry, inputs: { traceStore }, findingsStore,
-  knowledgeAdapter, improvementAdapter,
-  autoApply: {
-    knowledge: true,           knowledgeConfidenceThreshold: 0.85,
-    improvement: true,         improvementConfidenceThreshold: 0.90,
-  },
-  onEvent: (ev) => { /* forward analyst-completed / knowledge-applied / improvement-applied */ },
-})
+// Then route result.findings through the product's knowledge/surface adapters.
 ```
 
 ### Subject grammar — load-bearing
@@ -716,56 +633,46 @@ recognised kind lands in `skipped` and never produces a mutation.
 - The `draftPatch` callback returns an empty patch when no actionable edit
   is warranted. The substrate counts that as a soft skip — do not throw.
 
-## 3. Trace capture — `TraceSource` (the `createProductionTraceSink` replacement)
+## 3. Production trace source
 
-The `createProductionTraceSink` / `createProductionSink` factory has been
-REMOVED. Trace capture is now substrate- AND harness-agnostic via the
-`TraceSource` interface (`@tangle-network/agent-runtime/loops` — the published
-`src/runtime/` barrel, not the package root), with `ToolSpan`
-(the canonical agent-eval span) as the common currency. A `TraceSource`
-exposes two methods:
+Every production chat session must expose the same tool-call trace shape that
+eval, analyst, and improvement loops consume. Current runtime packages use the
+`TraceSource` family, not the old production-sink symbols.
 
 ```ts
-interface TraceSource {
-  onSpan(handler: (span: ToolSpan) => void): () => void  // ONLINE — live detection
-  collect(): Promise<ToolSpan[]>                          // SETTLE — full batch
+import {
+  createPushTraceSource,
+  sandboxSessionTraceSource,
+  type SessionTraceBox,
+  type TraceSource,
+} from '@tangle-network/agent-runtime/loops'
+
+export function ownedLoopTraceSource(runId: string) {
+  return createPushTraceSource({ runId })
+}
+
+export function sandboxTraceSource(
+  box: SessionTraceBox,
+  sessionId: string,
+  harness: string,
+): TraceSource {
+  return sandboxSessionTraceSource(box, sessionId, { harness })
 }
 ```
 
-There are two ways to build one, depending on where the trace comes from:
-
-- **Owned loop (local / router / cli-bridge)** — `createPushTraceSource()`
-  returns `{ source, record }`. Feed each tool step to `record(toolStepInput)`;
-  it becomes a `ToolSpan`, fans out to live `onSpan` subscribers, and is
-  buffered for `collect`. The owned tool-loop executor wires `onToolStep` →
-  `record` for you.
-- **Sandbox / fleet box (production target)** —
-  `sandboxSessionTraceSource(box, sessionId, { harness })` reads the box's
-  session message parts and decodes the tool calls. The `harness` selects the
-  per-harness decoder (`decodeOpencodePart` / `decodeAnthropicPart` /
-  `decodeOpenAiPart`, picked by `decodeToolPart`). The decoders normalize
-  against the canonical `ToolPart` / `ToolState` published by
-  `@tangle-network/agent-interface`.
-
-Two consumers ride a source: the ONLINE `watchTrace` (folds live spans into
-repeated-action / error-streak signals → a finding) and the SETTLE
-`analyzeTrace` (batch trajectory / stuck-loop / tool-waste views). The
-detection logic + failure taxonomy live in agent-eval — never reimplement them
-here.
+Owned loops call `record(...)` on the returned push source as tools execute.
+Sandbox or fleet runs collect spans from session parts at settle time. The
+same persisted span stream feeds analyst findings and the improvement loop.
 
 ### Gotchas
 
-- **`codex` emits NO structured tool calls** (text + shell only), so per-tool
-  detection is unavailable for codex from any path. This is a harness property,
-  not a gap — do not build a codex decoder.
-- Adding a harness = add a decoder + one `toolPartDecoders` entry, validated
-  against the cli-bridge backend. Don't special-case opencode; it is only the
-  cli-bridge test target.
-- Trace / OTLP forwarding failures must NEVER surface to the chat user — wrap
-  the forward, not the chat path.
-- Production target = the sandbox/fleet box (`sandboxSessionTraceSource`); the
-  owned-loop push path (`createPushTraceSource`) is for local / router /
-  cli-bridge runs.
+- Do not copy old examples that import `createProductionTraceSink` or
+  `ProductionTraceSink`; `npm pack @tangle-network/agent-runtime@0.70.0` did
+  not expose those names.
+- Owned tool loops must record spans at dispatch time; sandbox loops must
+  collect session parts before teardown.
+- Trace export failures must not fail the user path. Persist the run record
+  and warn on telemetry forwarding failure.
 
 ## 4. `assertRealBackend` + `enforceBackendIntegrity` guard — **the Phase A insight**
 
@@ -784,7 +691,7 @@ Wire it AFTER `RunRecord[]` is built, BEFORE the ship-gate. Default ON.
 Opt-out only for synthetic-record tests via `EVAL_SKIP_BACKEND_INTEGRITY=1`
 or `skipFlag=true`.
 
-Illustrative `your-agent/eval/lib/backend-integrity.ts`:
+`legal-agent/tests/eval/lib/backend-integrity.ts:45`:
 
 ```ts
 import {
@@ -805,7 +712,7 @@ export function enforceBackendIntegrity(
 }
 ```
 
-Call site (illustrative `your-agent/eval/canonical-runner.ts`):
+Call site (`creative-agent/eval/canonical-runner.ts:348`):
 
 ```ts
 let integrityReport: BackendIntegrityReport | null = null
@@ -828,9 +735,8 @@ try {
 - **Always persist `backend-integrity.json`** on both the success and the
   throw path. The post-mortem bundle needs the diagnosis when an operator
   asks "why did nightly fail at 02:14 UTC."
-- This guard is the single most-cited fix when wiring a fresh product: every
-  reference adoption lands it as a dedicated `backend-integrity.ts` plus a
-  PR that flips it on by default before the first nightly run.
+- Reference PRs that wired this: `creative-agent#147`, `tax-agent#91`,
+  `gtm-agent#145`, `legal-agent#98`.
 
 ## 5. Scorecard wiring — `agentProfileHash` + `recordRunsToScorecard`
 
@@ -840,7 +746,7 @@ log keyed by `(scenarioId × profileHash)`; each line is one run on one cell.
 `loadScorecard` + `diffScorecard` answer the regression question with a
 Welch's t-test on the latest entries vs their predecessors.
 
-Illustrative `your-agent/eval/scorecard-integration.ts`:
+`creative-agent/eval/scorecard-integration.ts:38`:
 
 ```ts
 import {
@@ -848,15 +754,20 @@ import {
   recordRunsToScorecard, type AgentProfile, type RunRecord, type ScorecardDiff,
 } from '@tangle-network/agent-eval'
 
+// NOTE: this `AgentProfile` is agent-eval's NARROW scorecard-key type
+// ({ model, skills, tools, promptVersion, metadata } — behaviour-only, the hash key).
+// It is DISTINCT from the harness `AgentProfile` owned by @tangle-network/agent-interface
+// (prompt + skills + tools + mcp + subagents + permissions). Don't conflate the two.
+
 export function buildScorecardAgentProfile(model: string): AgentProfile {
-  const skills = Object.keys(yourAgentProfile.subagents ?? {}).sort()
-  const tools  = Object.entries(yourAgentProfile.tools ?? {})
+  const skills = Object.keys(creativeAgentProfile.subagents ?? {}).sort()
+  const tools  = Object.entries(creativeAgentProfile.tools ?? {})
                   .filter(([, on]) => on === true).map(([id]) => id).sort()
   return {
-    id: `${yourAgentProfile.name}@v${yourAgentProfile.version}/${model}`,
+    id: `${creativeAgentProfile.name}@v${creativeAgentProfile.version}/${model}`,
     model, skills, tools,
     promptVersion: `production-loop-addendum/v${addendumVersion}`,
-    metadata: { profileName: yourAgentProfile.name, profileVersion: yourAgentProfile.version },
+    metadata: { profileName: creativeAgentProfile.name, profileVersion: creativeAgentProfile.version },
   }
 }
 
@@ -874,8 +785,11 @@ export function recordScorecardAndDiff(input: ScorecardWiringInput): ScorecardWi
 ```
 
 CLI flag: `--fail-on-regression` (or `EVAL_FAIL_ON_REGRESSION=1`) flips the
-diff from informational to a hard CI gate. The same `scorecard-integration.ts`
-shape lands in every product's `eval/lib/` (or `eval/`) folder.
+diff from informational to a hard CI gate.
+
+Same shape in `tax-agent/tests/eval/lib/scorecard-integration.ts`,
+`legal-agent/tests/eval/lib/scorecard-integration.ts`,
+`gtm-agent/eval/scorecard-integration.ts`.
 
 ### Gotchas
 
@@ -888,14 +802,15 @@ shape lands in every product's `eval/lib/` (or `eval/`) folder.
   when `|Cohen's d| ≥ minEffect AND p ≤ maxP`. With identical seeds /
   identical scores variance is zero, `p = NaN`, and every move silently
   shows `flat`. Real eval scoring already has variance; tests must seed
-  per-rep variance explicitly — assert this with a dedicated
-  `scorecard-wiring.test.ts` that injects per-rep noise and proves a
-  `regressed` verdict actually fires.
+  per-rep variance explicitly. See
+  `tax-agent/tests/eval/scorecard-wiring.test.ts:117`.
 - **The JSONL is checked into the repo** at `eval/.scorecard.jsonl` (or
   `tests/eval/.scorecard.jsonl`). Don't gitignore it — that's the
   multi-commit history the diff reads from.
+- Reference PRs: `creative-agent#145`, `tax-agent#90`, `gtm-agent#144`,
+  `legal-agent#97`.
 
-## 6. Per-run `AgentProfileCell` — `buildAgentProfileCell` / `buildAgentInterfaceProfileCell`
+## 6. Per-run `AgentProfileCell` — `buildAgentProfileCell` / `buildSandboxAgentProfileCell`
 
 Coexists with the scorecard profile; do not conflate them. The scorecard's
 `AgentProfile` is the behaviour-only key whose hash is stable across runs.
@@ -904,33 +819,29 @@ identity: harness id+version, model, prompt hash, backend label, persona
 suite. Use it to filter scorecard cells by harness or backend after the
 fact.
 
-Illustrative `your-agent/eval/agent-profile-cell.ts`:
+`creative-agent/eval/agent-profile-cell.ts:1`:
 
 ```ts
 import { buildAgentProfileCell, type AgentProfileCell, type AgentProfileJson } from '@tangle-network/agent-eval'
 
-export async function buildYourAgentProfileCell(args: {
+export async function buildCreativeAgentProfileCell(args: {
   harnessVersion: string; model: string; promptHash: string;
   backend: string; personaSuite: string;
 }): Promise<AgentProfileCell> {
   return buildAgentProfileCell({
-    profileId:     `${yourAgentProfile.name}@${yourAgentProfile.version}`,
-    sourceProfile: { kind: 'agent-interface-profile', profile: toAgentProfileJson(yourAgentProfile) },
-    harness:       { id: 'your-agent-canonical-eval', version: args.harnessVersion },
+    profileId:     `${creativeAgentProfile.name}@${creativeAgentProfile.version}`,
+    sourceProfile: { kind: 'sandbox-agent-profile', profile: toAgentProfileJson(creativeAgentProfile) },
+    harness:       { id: 'creative-agent-canonical-eval', version: args.harnessVersion },
     model: args.model, promptHash: args.promptHash,
     dimensions:    { backend: args.backend, personaSuite: args.personaSuite },
   })
 }
 ```
 
-For products consuming an agent-interface `AgentProfile` directly, use the
-short-circuit `buildAgentInterfaceProfileCell(profile, { harness, model,
-promptHash, dimensions })` (`agent-eval/src/agent-profile-cell.ts:426`) — it
-hard-codes the canonical `agent-interface-profile` kind
-(`AGENT_PROFILE_KINDS.AGENT_INTERFACE_PROFILE`) and the JSON canonicalization,
-deriving `profileId` from `profile.name@profile.version`. It requires the
-profile carry a non-empty `name` + `version`. (`buildSandboxAgentProfileCell`
-was removed in 0.94 — the old `sandbox-agent-profile` kind no longer exists.)
+For products consuming a sandbox-SDK `AgentProfile` directly, use the
+short-circuit `buildSandboxAgentProfileCell(profile, { harness, model,
+promptHash, dimensions })` (`agent-eval/src/agent-profile-cell.ts:434`) — it
+hard-codes the `sandbox-agent-profile` kind and the JSON canonicalization.
 
 ### Gotchas
 
@@ -943,94 +854,59 @@ was removed in 0.94 — the old `sandbox-agent-profile` kind no longer exists.)
 
 ## 7. Held-out promotion gate + `runImprovementLoop`
 
-`runProductionLoop` has been REMOVED. The orchestrator is now
-`runImprovementLoop` (`@tangle-network/agent-eval/contract`) — it runs the optimizer
-over a training pool, scores baseline-vs-winner on a held-out pool, gates the
-promotion, and (when `autoOnPromote: 'pr'`) opens a PR. Its options type
-`RunImprovementLoopOptions` carries the proposer/scenario/judge fields the
-inner optimizer takes; the loop adds the held-out gate + ship. (The internal
-loop body `runOptimization` is no longer a public export — drive it through
-`runImprovementLoop`.)
+`runImprovementLoop` ties train/dev optimization → held-out scoring →
+release-confidence gate → optional auto-PR into one call. Use
+`runOptimization` only when you need the inner search body without promotion.
 
-### App-facing shortcut — `defineAgentEval()`
-
-For the common case, agent-eval ships `defineAgentEval()`
-(`@tangle-network/agent-eval/contract`): define scenarios, agent, judge, and a
-baseline surface ONCE, then call `.evaluate()` to score a surface (returns a
-`CampaignResult`) or `.improve()` to run the closed loop (returns a
-`SelfImproveResult`, the same shape `selfImprove` returns). Per-call overrides
-replace the definition except the nested `budget` / `llm` / `hostedTenant`
-objects, which merge field-by-field; invalid `budget.reps` and an empty judge
-list fail loudly.
-
-```ts
-import { defineAgentEval } from '@tangle-network/agent-eval/contract'
-
-const agentEval = defineAgentEval({
-  scenarios:       TRAINING_SCENARIOS,
-  agent:           (surface, scenario, ctx) => runYourAgent(surface, scenario, ctx),
-  judge:           yourJudgeConfig,        // or judges: [...]
-  baselineSurface: PROMPT_ADDENDUM_BASELINE,
-  budget:          { reps: 3, dollars: 5 },
-  llm:             { apiKey: process.env.TANGLE_API_KEY, baseUrl: ROUTER_URL },
-})
-
-const score   = await agentEval.evaluate()                 // CampaignResult
-const improved = await agentEval.improve({ budget: { reps: 6 } })  // SelfImproveResult
-```
-
-It is a DX wrapper only — it delegates to `runEval()` and `selfImprove()` and
-returns their native result shapes, so reach for the raw `runImprovementLoop`
-below when you need finer control over the gate / proposer / auto-PR.
-
-Illustrative `your-agent/src/server/improvement-loop/index.ts`:
+Skeleton:
 
 ```ts
 import {
-  runImprovementLoop, defaultProductionGate, gepaProposer,
-} from '@tangle-network/agent-eval/contract'
-import type { Scenario } from '@tangle-network/agent-eval'
+  runImprovementLoop,
+  type MutableSurface,
+  type RunImprovementLoopResult,
+  type Scenario,
+} from '@tangle-network/agent-eval/campaign'
 
-const result = await runImprovementLoop<Scenario, YourArtifact>({
-  // ...RunImprovementLoopOptions — scenarios (training pool), judges, runDir,
-  //    proposer (e.g. gepaProposer({ ... }) for a text surface), runner, etc.
-  scenarios:        TRAINING_SCENARIOS,
-  holdoutScenarios: YOUR_LOOP_HOLDOUT_SCENARIOS,        // kept OUT of training
-  proposer:         gepaProposer({ /* reflection llm/model, constraints */ }),
-  gate: defaultProductionGate({
-    holdoutScenarios: YOUR_LOOP_HOLDOUT_SCENARIOS,
-    deltaThreshold:   2,     // paired-bootstrap CI LOWER BOUND must clear this
-    confidence:       0.95,  // not a point estimate — a significance floor
-  }),
-  autoOnPromote: options.github ? 'pr' : 'none',
-  ghOwner: 'your-org', ghRepo: 'your-agent',
+const result: RunImprovementLoopResult<Artifact, Scenario> =
+  await runImprovementLoop<Scenario, Artifact>({
+    runId,
+    runDir,
+    scenarios: trainScenarios,
+    holdoutScenarios,
+    baselineSurface: BASELINE_PROMPT_ADDENDUM,
+    dispatchWithSurface,
+    judges,
+    proposer,
+    gate,
+    populationSize: 3,
+    maxGenerations: 2,
+    autoOnPromote: process.env.GITHUB_TOKEN ? 'pr' : 'none',
+    ghOwner: 'tangle-network',
+    ghRepo: 'creative-agent',
+    renderPromotedDiff: (winner: MutableSurface, baseline: MutableSurface) =>
+      renderPromptAddendumDiff(winner, baseline),
 })
-// result.gateResult.decision ∈ { 'ship', 'hold', ... }; result.promotedDiff is
-// the baseline→winner surface diff the gate actually decided on (always present).
 ```
 
-For finer-grained shipping, compose it yourself:
-`proposeAutomatedPullRequest(httpGithubClient({ token }), input)` (both root
-exports of `@tangle-network/agent-eval`) after a standalone `HeldOutGate`
-(class, root) / `defaultProductionGate` (`/contract`) decision. The same loop lands
-per product, either under a server-side `improvement-loop/` module or under
-`eval/lib/improvement-loop.ts` — the only difference is the holdout scenario set
-and the surface the loop is allowed to rewrite.
+The train and holdout scenario ids must be disjoint. `runImprovementLoop`
+fails before rollout if the optimizer can see a scenario that later gates
+promotion.
 
 ### Gotchas
 
-- **The gate fails closed and is significance-based.** `defaultProductionGate`
-  ships only when the **paired-bootstrap CI lower bound** clears `deltaThreshold`
-  — a point estimate "better than baseline" is NOT enough. It also composes
-  red-team / reward-hacking / canary / heldout checks. Below the minimum paired
-  observation count it HOLDS with `few_runs`.
-- **Static skills are not loop-owned.** The loop rewrites a single mutable
-  surface (e.g. a `prompt-addendum.ts`). Curated skills are out of scope.
-- **The promoted surface must be syntactically valid** — when the rendered diff
-  is committed verbatim, round-trip it through `tsc --noEmit` in tests.
-- Validate the judge `llm` transport carries an `apiKey` / `bearer` /
-  `authHeader` before calling. Falling back to the free router for paid judge
-  calls is a footgun; throw rather than silently downgrade.
+- **The gate fails closed.** `pairedDeltaThreshold` + `overfitGapThreshold`
+  + `minProductiveRuns` must all be satisfied. A "promote when better than
+  baseline" without these is a regression vector.
+- **Static skills are not loop-owned.** The loop rewrites a single
+  `prompt-addendum.ts` only. Skills under `agent-prompt/skills/` are
+  human-curated.
+- **Rendered prompt diffs must produce syntactically valid TS modules** —
+  the auto-PR helper commits the rendered change verbatim. Round-trip the result
+  through `tsc --noEmit` in tests.
+- Validate `llm` transport carries an `apiKey` / `bearer` / `authHeader`
+  before calling. Falling back to the free router for paid judge calls is
+  a footgun; throw `ValidationError`.
 
 ## 8. `runEvalCampaign` — variant × scenario × seed sweeps
 
@@ -1048,20 +924,23 @@ duplicate scenarioIds. Treat those as authoring errors and fix the caller.
 Two workflows live under `.github/workflows/`:
 
 - `nightly-eval.yml` — daily at 02:00 UTC, runs the full persona corpus on
-  the configured backend. Run on a self-hosted runner that can reach the
-  backend (`tcloud` / `cli-bridge` are not reachable from GitHub-hosted
-  runners). Uploads `eval/.runs/<runId>/` as an artifact. Optional Sunday
-  03:00 UTC `eval:evolve` cron when `package.json` defines that script.
-- `improvement-loop.yml` — weekly held-out promotion cycle. Mondays 06:00
+  the configured backend (`tcloud` on `self-hosted, staging-runner` is the
+  shipped default; GitHub-hosted cannot reach `cli-bridge`). Uploads
+  `eval/.runs/<runId>/` as an artifact. Optional Sunday 03:00 UTC
+  `eval:evolve` cron when `package.json` defines that script. Reference:
+  `creative-agent/.github/workflows/nightly-eval.yml`,
+  `tax-agent/.github/workflows/nightly-eval.yml`,
+  `legal-agent/.github/workflows/nightly-eval.yml`.
+- `production-loop.yml` — weekly held-out promotion cycle. Mondays 06:00
   UTC. Needs `TANGLE_API_KEY` + `GH_AUTO_PR_TOKEN` (falls back to
-  `GITHUB_TOKEN`). Calls `pnpm eval:improvement-loop` with optional
-  `--dry-run`.
+  `GITHUB_TOKEN`). Calls `pnpm eval:production-loop` with optional
+  `--dry-run`. Reference: `tax-agent/.github/workflows/production-loop.yml`.
 
 ### Gotchas
 
-- A self-hosted runner label is required when the backend (`tcloud` /
-  `cli-bridge`) is only reachable from your own network; do not silently
-  switch to `ubuntu-latest`, which can't reach it.
+- `runs-on: [self-hosted, staging-runner]` is the canonical label. The
+  `tcloud` backend requires this; do not silently switch to
+  `ubuntu-latest`.
 - `concurrency.cancel-in-progress: false` — the two crons can land on the
   same SHA; cancelling the earlier one corrupts the scorecard append order.
 - `permissions: { contents: write, issues: write, pull-requests: write }` —
@@ -1106,11 +985,11 @@ omits any one of them is shipping the bug class it prevents:
    positives directly into agent behaviour. Default
    `autoApply.improvement.mode = 'open-pr'` and flip to `'write'` only
    after measuring producer precision.
-8. **Trace capture throwing into the user path.** A misconfigured OTLP
-   endpoint or decoder must NEVER surface to the chat user. Wrap the
-   `TraceSource` forward, never the chat path.
-9. **A promoted surface emitting invalid TS.** The improvement loop commits
-   the rendered surface verbatim. A missing closing brace ships a broken
+8. **Trace export throwing into the user path.** A misconfigured OTLP
+   endpoint must NEVER surface to the chat user. Trace export catches and
+   warns; do not wrap it with code that re-throws.
+9. **`renderPromptFile` emitting invalid TS.** The production-loop commits
+   the rendered file verbatim. A missing closing brace ships a broken
    main. Round-trip every renderer through `tsc --noEmit` in tests.
 10. **Eval backend lacks MCP tool support.** `createOpenAICompatibleBackend`
     POSTs `{ model, stream, messages }` only — no `tools`. An eval that
@@ -1143,7 +1022,7 @@ omits any one of them is shipping the bug class it prevents:
 - `assertRealBackend` is opted out by default, not opted out only for tests.
 - Scorecard JSONL is gitignored.
 - `findings.jsonl` lives outside the repo.
-- Production trace sink throws into the chat path.
+- Trace export throws into the chat path.
 - Auto-apply improvement runs without operator review and without a measured
   precision floor.
 - Reports claim wins without `runId` + `commitSha` + scorecard diff link.
@@ -1152,7 +1031,7 @@ omits any one of them is shipping the bug class it prevents:
   `tools` field — the rubric can never pass.
 - Eval builds a parallel `AgentProfile` instead of importing the
   production composer (`composeProductionAgentProfile` or equivalent
-  from the server-side sandbox module).
+  from `src/lib/.server/sandbox/`).
 - `runLoop` / `runChatThroughRuntime` errors are swallowed — `backend_error`
   events in the stream don't propagate to harness-level failure.
 - MCP delegation server mounted via static `AgentProfileMcpServer.env`
@@ -1165,15 +1044,16 @@ A freshly-adopted product is correctly wired iff ALL hold:
 
 - [ ] `<eval-root>/agent.config.ts` exports `defineAgent({...})` with every
       surface validated against disk at module load.
-- [ ] `<eval-root>/analyst-loop.ts` runs `runAnalystLoop` with
-      `createSurfaceImprovementAdapter` + `createSurfaceKnowledgeAdapter` +
-      `OtlpFileTraceStore`, ledger at `.evolve/findings/findings.jsonl`.
-- [ ] `src/server/agent-runtime/trace-capture.ts` (or package-equivalent)
-      builds a `TraceSource` — `createPushTraceSource()` for the owned loop or
-      `sandboxSessionTraceSource(box, sessionId, { harness })` for the box — and
-      consumes spans via `watchTrace` (online) / `analyzeTrace` (settle).
-- [ ] Trace / OTLP forwarding is wrapped so a decoder/endpoint failure never
-      surfaces to the chat user.
+- [ ] `<eval-root>/analyst-loop.ts` runs `AnalystRegistry.run(...)` with
+      `OtlpFileTraceStore`, appends findings through `FindingsStore`, and
+      routes accepted findings to the product's knowledge/surface adapters.
+      Ledger lives at `.evolve/findings/findings.jsonl`.
+- [ ] `src/lib/.server/agent-runtime/trace-capture.ts` (or
+      package-equivalent) exports a `TraceSource` factory using
+      `createPushTraceSource` for owned loops or `sandboxSessionTraceSource`
+      for sandbox sessions.
+- [ ] Chat handler records or collects tool spans and persists them before
+      teardown; telemetry forwarding failures warn without failing the user path.
 - [ ] `<eval-root>/lib/backend-integrity.ts` exports
       `enforceBackendIntegrity(records, skipFlag?)`; called after
       `RunRecord[]` is built, BEFORE the ship-gate; `backend-integrity.json`
@@ -1186,22 +1066,22 @@ A freshly-adopted product is correctly wired iff ALL hold:
 - [ ] `<eval-root>/agent-profile-cell.ts` exports
       `build<Agent>AgentProfileCell({ harnessVersion, model, promptHash, backend, personaSuite })`
       and stamps every `RunRecord.agentProfile` before scorecard append.
-- [ ] `src/server/improvement-loop/` (or `<eval-root>/lib/improvement-loop.ts`)
-      calls `runImprovementLoop` with `holdoutScenarios` + `gate`
-      (`defaultProductionGate`) + `autoOnPromote: 'pr'` (or composes
-      `proposeAutomatedPullRequest`). Loop owns a single mutable surface; static
-      skills are out of scope.
+- [ ] `src/lib/.server/production-loop/` (or `<eval-root>/lib/production-loop.ts`)
+      calls `runImprovementLoop` with `holdoutScenarios` + `gate` +
+      `autoOnPromote: 'pr'` plus `ghOwner` / `ghRepo` when promotion should
+      open a PR. Loop owns a single
+      `prompt-addendum.ts`; static skills are out of scope.
 - [ ] CLI flag `--fail-on-regression` (or `EVAL_FAIL_ON_REGRESSION=1`) wired
       through the canonical runner.
-- [ ] `.github/workflows/nightly-eval.yml` daily at 02:00 UTC on a runner
-      that can reach the backend; uploads `<runDir>/` artifact;
+- [ ] `.github/workflows/nightly-eval.yml` daily at 02:00 UTC on
+      `[self-hosted, staging-runner]`; uploads `<runDir>/` artifact;
       `concurrency.cancel-in-progress: false`; `permissions:` includes
       `contents: write`, `issues: write`, `pull-requests: write`.
-- [ ] `.github/workflows/improvement-loop.yml` weekly; required secrets
+- [ ] `.github/workflows/production-loop.yml` weekly; required secrets
       documented; supports `--dry-run` workflow_dispatch input.
 - [ ] `package.json` script `eval:improve` runs the analyst loop;
-      `eval:improvement-loop` runs the held-out promotion cycle.
-- [ ] The server-side sandbox module exports `composeProductionAgentProfile`
+      `eval:production-loop` runs the held-out promotion cycle.
+- [ ] `src/lib/.server/sandbox/` exports `composeProductionAgentProfile`
       (or equivalent); eval canonical runner imports it instead of
       hand-rolling its own profile.
 - [ ] `eval/profile-parity.test.ts` (or equivalent) asserts the eval
@@ -1221,48 +1101,36 @@ A freshly-adopted product is correctly wired iff ALL hold:
       — a 402 / 401 / 5xx does NOT become a silent `toolCalls: []`
       scenario result.
 
-Mirror the canonical file layout above file-for-file when standing up a
-fresh product; every vertical agent on this stack ships the same `eval/` +
-server-runtime + `.github/workflows/` shape.
+Canonical scaffold delivery: `agent-builder#198`. Reference impls to mirror
+file-for-file: `creative-agent`, `tax-agent`, `legal-agent`, `gtm-agent`.
 
 # Key docs
 
-- `@tangle-network/agent-interface@~0.10` — the neutral contract: `AgentProfile`,
-  `AgentProfileMcpServer`, `HarnessType`, `ReasoningEffort`, `Part`, `ToolPart`,
-  plus the capability layer `harnessSupportsModel` / `reasoningEffortsFor` /
-  `reasoningLadder`
-- `@tangle-network/agent-eval@0.95.x` README + `docs/wire-protocol.md`
-- `@tangle-network/agent-eval/matrix` — `runAgentMatrix`, `buildByAxis`,
-  `MatrixAxis` (`{ name, values: [{ id, value }] }`), `MatrixCell`,
-  `CellResult`, `AxisSummary`
-- `@tangle-network/agent-runtime@0.70.x/loops` — `runLoop`, the strategy
-  values `refine` / `sample` / `sampleThenRefine` / `adaptiveRefine` /
-  `depthStrategy` / `breadthStrategy`, the coder generics `worktreeFanout` /
-  `gateOnDeliverable` / `patchDelivered` / `createWorktreeCliExecutor` /
-  `selectValidWinner`, the `TraceSource` family (`createPushTraceSource` /
-  `sandboxSessionTraceSource` / `watchTrace` / `analyzeTrace`), and the
-  Scope/Supervisor combinators — ALL live under `/loops` (the published
-  `src/runtime/` barrel), NOT the package root. `Driver` / `OutputAdapter` /
-  `Validator` interfaces are here too.
-- `@tangle-network/agent-runtime/profiles` — `coderProfile`, `uiAuditorProfile`
-- `@tangle-network/agent-runtime` (root) — `improvementDriver`,
-  `reflectiveGenerator`, `agenticGenerator`, `commandVerifier` (re-exported from
-  the package root; there is no `/improvement` export subpath)
+- `references/current-substrate.md` — current package line and removed-symbol
+  checks. Run `scripts/check-substrate-versions.sh` before editing this list.
+- `@tangle-network/agent-interface@0.10.x` — the neutral contract: `AgentProfile`,
+  `AgentProfileMcpServer`, `HarnessType`, `ReasoningEffort`,
+  `Part` / `ToolPart` / `ToolState`, `harnessSupportsModel`, `reasoningEffortsFor`
+- `@tangle-network/agent-profile-materialize@0.1.0` — `materializeProfile`,
+  `WorkspacePlan`, `applyWorkspacePlan`
+- `@tangle-network/agent-eval@0.95.x` README
+- `@tangle-network/agent-eval/docs/wire-protocol.md`
+- `@tangle-network/agent-eval/matrix` — `runAgentMatrix` (shipped),
+  `MatrixScenario`, `MatrixAxes`, `axisExtractors`
+- `@tangle-network/agent-eval/campaign` — `runImprovementLoop`,
+  `runOptimization`, `Scenario`, `MutableSurface`
+- `@tangle-network/agent-runtime@0.70.x/loops` — `runAgentic`, `runLoop`,
+  `sample`, `refine`, `sampleThenRefine`, `adaptiveRefine`, `worktreeFanout`,
+  `gateOnDeliverable`, `patchDelivered`, `selectValidWinner`,
+  `createWorktreeCliExecutor`, `Driver` / `OutputAdapter` / `Validator` interfaces
+- `@tangle-network/agent-runtime/profiles` — `coderProfile` (an `AgentProfile`
+  constant), `DEFAULT_CODER_SYSTEM_PROMPT`, `coderTaskToPrompt`
 - `@tangle-network/agent-runtime/mcp` — `createMcpServer`,
-  `buildDelegationMcpServer`, `composeProductionAgentProfile`,
   `detachedSessionDelegate`, `createSiblingSandboxExecutor`,
   `createFleetWorkspaceExecutor`; bin `agent-runtime-mcp`
-- `@tangle-network/agent-runtime/agent` — `defineAgent`, `createSurface*Adapter`,
-  `measureOutcome`, `validateSurfaces` (the `/agent` barrel does NOT export
-  `runAnalystLoop`; see the analyst-loop note below)
-- `@tangle-network/agent-runtime/analyst-loop` — `runAnalystLoop`. NOTE: the
-  repo's own example doc cites this subpath, but as of agent-runtime 0.70.0 it
-  is NOT declared in `package.json` `exports` (no `./analyst-loop` entry) and
-  is not re-exported from any built barrel — importing it from a published
-  install will fail to resolve until the package adds the subpath. Verify
-  resolution against the installed dist before relying on it.
-- `@tangle-network/agent-profile-materialize@0.1.x` — `materializeProfile`,
-  `WorkspacePlan`, `applyWorkspacePlan` (turn an `AgentProfile` into on-disk
-  harness shapes)
+- `@tangle-network/agent-runtime/loops` — `TraceSource`,
+  `createPushTraceSource`, `sandboxSessionTraceSource`
+- `@tangle-network/agent-runtime/agent` — `defineAgent`,
+  `createSurfaceImprovementAdapter`, `createSurfaceKnowledgeAdapter`
 - `@tangle-network/agent-knowledge@1.7.x` — `proposeFromFindings`,
   `applyKnowledgeWriteBlocks`, optional `multiHarnessResearcherFanout`
