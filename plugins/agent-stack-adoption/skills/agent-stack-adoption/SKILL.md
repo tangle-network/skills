@@ -5,6 +5,8 @@ description: "Adopt the self-improving Tangle agent stack (@tangle-network/{agen
 
 # Agent Stack Adoption — full pipeline checklist
 
+> **Versions move fast — run `scripts/check-substrate-versions.sh` before copying any version pin below.** npm is the source of truth and the script fails closed when a pin here falls behind it (agent-eval shipped a breaking 0.94 the same week 0.95 landed). A minor bump can rename or move an export, so re-verify API names against the new dist whenever the script flags drift.
+
 ## Related skills — what to read when
 
 | If you are... | Read |
