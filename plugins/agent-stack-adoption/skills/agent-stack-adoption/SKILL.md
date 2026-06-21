@@ -37,7 +37,8 @@ neutral contract at the bottom:
   propose-don't-apply layer.
 - **`@tangle-network/agent-eval`** — ingests the live trace stream into a held-out
   gate that lands auto-PRs against the production prompt addendum; owns
-  `runImprovementLoop` / `runOptimization` / `runAgentMatrix` / `runMultishotMatrix`.
+  `runImprovementLoop` (`/contract`) / `runAgentMatrix` (`/matrix`) /
+  `runMultishotMatrix` (`/multishot`).
 
 "Adopted" means the product runs through ALL nine phases below — anything less
 ships a partial loop that drifts. This skill is the state machine. Cross-link:
@@ -88,10 +89,10 @@ runtime/eval/knowledge/sandbox layers, and `@tangle-network/tcloud` for LLM call
 {
   "dependencies": {
     "@tangle-network/agent-interface": "^0.10.0",
-    "@tangle-network/agent-eval": "^0.93.0",
-    "@tangle-network/agent-runtime": "^0.65.0",
+    "@tangle-network/agent-eval": "^0.95.0",
+    "@tangle-network/agent-runtime": "^0.70.0",
     "@tangle-network/agent-knowledge": "^1.7.0",
-    "@tangle-network/sandbox": "^0.8.0",
+    "@tangle-network/sandbox": "^0.8.2",
     "@tangle-network/agent-profile-materialize": "^0.1.0",
     "@tangle-network/tcloud": "^0.4.13"
   },
@@ -100,7 +101,7 @@ runtime/eval/knowledge/sandbox layers, and `@tangle-network/tcloud` for LLM call
     "minimumReleaseAgeExclude": [],
     "onlyBuiltDependencies": ["esbuild", "better-sqlite3"],
     "overrides": {
-      "@tangle-network/agent-eval": "^0.93.0",
+      "@tangle-network/agent-eval": "^0.95.0",
       "@tangle-network/agent-interface": "^0.10.0"
     }
   }
@@ -129,9 +130,13 @@ pnpm install --frozen-lockfile && pnpm dedupe --check
 
 - Floating `*` or `latest` ranges — catches a malicious yank-window publish.
 - Mixed versions between agent-runtime and its substrate peers. agent-runtime
-  0.65 declares `@tangle-network/agent-eval >=0.93.0 <1.0.0`,
-  `@tangle-network/agent-interface ^0.10.0`, `@tangle-network/agent-knowledge ^1.7.0`,
-  and `@tangle-network/sandbox ^0.8.0` as required peerDependencies. Pin inside
+  0.70 declares `@tangle-network/agent-eval >=0.93.0 <1.0.0`,
+  `@tangle-network/agent-interface >=0.10.0 <1.0.0`,
+  `@tangle-network/agent-knowledge >=1.7.0 <2.0.0`, and
+  `@tangle-network/sandbox >=0.8.0 <1.0.0` as required peerDependencies. (The
+  eval floor is `>=0.93.0`, but agent-runtime 0.70.0 is the release that
+  rewired onto agent-eval 0.95.0's Proposer API — pin agent-eval `^0.95.0` to
+  match.) Pin inside
   those ranges; drift breaks the analyst loop and the trace-type decode. (Confirm
   the live peer range with `npm view @tangle-network/agent-runtime peerDependencies`.)
 - Omitting `minimumReleaseAge` — supply-chain hardening should pin a release-age
@@ -340,7 +345,7 @@ import {
   sandboxSessionTraceSource,
   createPushTraceSource,
   type TraceSource,
-} from '@tangle-network/agent-runtime/runtime'
+} from '@tangle-network/agent-runtime/loops'
 
 // Sandbox/fleet path — collect spans from the live box session after a turn.
 export function boxTraceSource(box: SessionTraceBox, sessionId: string): TraceSource {
@@ -403,9 +408,11 @@ loop converges on real agent behavior under candidate prompts — not on a
 regex over the addendum text.
 
 > **API note:** the loop runner is `runImprovementLoop` from
-> `@tangle-network/agent-eval` (top-level export). `runProductionLoop` was renamed —
-> it no longer exists. `runImprovementLoop` rides on `runOptimization` (also
-> top-level in agent-eval) which rides on `runCampaign`.
+> `@tangle-network/agent-eval/contract` (the loop/proposer/gate primitives moved
+> to the `/contract` subpath — they are NOT on the package root). `runProductionLoop`
+> was renamed — it no longer exists. `runImprovementLoop` rides on the internal
+> `runOptimization` (no longer a public export) which rides on `runCampaign`
+> (also `/contract`). Its options type is `RunImprovementLoopOptions`.
 
 **Files:**
 
@@ -420,7 +427,8 @@ regex over the addendum text.
 
 ```ts
 // src/server/production-loop/index.ts (sketch)
-import { httpGithubClient, runImprovementLoop } from '@tangle-network/agent-eval'
+import { httpGithubClient } from '@tangle-network/agent-eval'
+import { runImprovementLoop } from '@tangle-network/agent-eval/contract'
 import { runChatThroughRuntime } from '../agent-runtime/chat'
 import { composeProductionAgentProfile } from '../sandbox'
 import { PRODUCT_SYSTEM_PROMPT } from '../agent-profile'
@@ -1190,36 +1198,47 @@ grep — do NOT trust this table over the registry.
 
 | Primitive                              | Package / subpath                | Version | Status   |
 | -------------------------------------- | -------------------------------- | ------- | -------- |
-| Neutral contract (`AgentProfile` / `Part` / `ToolPart` / `HarnessType`) | agent-interface (`.`) | 0.9.x  | shipped  |
-| Capability layer (`harnessSupportsModel` / `reasoningEffortsFor` / `reasoningLadder`) | agent-interface (`.`) | 0.9.x | shipped |
+| Neutral contract (`AgentProfile` / `Part` / `ToolPart` / `HarnessType`) | agent-interface (`.`) | 0.10.x  | shipped  |
+| Capability layer (`harnessSupportsModel` / `reasoningEffortsFor` / `reasoningLadder`) | agent-interface (`.`) | 0.10.x | shipped |
 | `materializeProfile` / `applyWorkspacePlan` (`WorkspacePlan`) | agent-profile-materialize (`.`) | 0.1.x | shipped |
-| `runLoop` kernel                       | agent-runtime (`.`)              | 0.65.x  | shipped  |
-| Custom `Driver` on `runLoop` (refine / fanout) | agent-runtime (`.` / `/loops`) | 0.65.x | shipped — author a `Driver`; `createRefineDriver` is gone. |
-| `Scope` / `Supervisor` + combinators (`fanout`/`loopUntil`/`panel`/`verify`/`pipeline`) | agent-runtime (`/runtime`) | 0.65.x | shipped |
-| `coderProfile` preset                  | agent-runtime (`/profiles`)      | 0.65.x  | shipped  |
-| `worktreeFanout` / `gateOnDeliverable` / `patchDelivered` / `selectValidWinner` / `createWorktreeCliExecutor` (`WorktreePatchArtifact` / `DeliverableSpec`) | agent-runtime (`/loops`, also `/runtime`) | 0.65.x | shipped — the generic coder surface; `multiHarnessCoderFanout` is gone. |
-| `TraceSource` family (`createPushTraceSource` / `sandboxSessionTraceSource` / `ToolSpan`) | agent-runtime (`/runtime`) | 0.65.x | shipped — replaces `createProductionTraceSink`. |
-| `createScopeAnalyst` / online `watchTrace` + settle `analyzeTrace` | agent-runtime (`/runtime`, `/intelligence`) | 0.65.x | shipped |
-| MCP server (5 delegation tools)        | agent-runtime (`/mcp`)           | 0.65.x  | shipped  |
-| Sibling executor (default)             | agent-runtime (`/mcp`)           | 0.65.x  | shipped  |
-| Fleet executor (`TANGLE_FLEET_ID`)     | agent-runtime (`/mcp`)           | 0.65.x  | shipped  |
-| `defineAgent` manifest                 | agent-runtime (`/agent`)         | 0.65.x  | shipped  |
-| `createSurface{Improvement,Knowledge}` | agent-runtime (`/agent`)         | 0.65.x  | shipped  |
-| `runAnalystLoop`                       | agent-runtime (`/analyst-loop`)  | 0.65.x  | shipped  |
-| `createOtelExporter` / `exportTraceBundle` / `toOtelJson` | agent-runtime (`.`) + sandbox | 0.65.x / 0.8.x | shipped — `withOtelPipeline` does NOT exist. |
-| `runImprovementLoop` / `runOptimization` / `runCampaign` | agent-eval (`.`) | 0.93.x | shipped — replaces `runProductionLoop`. |
-| `runAgentMatrix` (cartesian, byAxis)   | agent-eval (`/matrix`)           | 0.93.x  | shipped  |
-| `runMultishot` / `runMultishotMatrix`  | agent-eval (`/multishot`)        | 0.93.x  | shipped  |
-| `assertRealBackend`                    | agent-eval (`.`)                 | 0.93.x  | shipped  |
-| Scorecard (`agentProfileHash`, diff)   | agent-eval (`.`)                 | 0.93.x  | shipped  |
-| Wire server (`startServer`)            | agent-eval (`/wire`)             | 0.93.x  | shipped  |
-| `FileSystemTraceStore`                 | agent-eval (`/traces`)           | 0.93.x  | shipped  |
+| `runLoop` kernel                       | agent-runtime (`/loops`)         | 0.70.x  | shipped  |
+| Custom `Driver` on `runLoop` (refine / sample) | agent-runtime (`/loops`) | 0.70.x | shipped — author a `Driver`; `createRefineDriver` is gone. |
+| `Scope` / `Supervisor` + combinators (`fanout`/`loopUntil`/`panel`/`verify`/`pipeline`) | agent-runtime (`/loops`) | 0.70.x | shipped |
+| `coderProfile` preset                  | agent-runtime (`/profiles`)      | 0.70.x  | shipped  |
+| `worktreeFanout` / `gateOnDeliverable` / `patchDelivered` / `selectValidWinner` / `createWorktreeCliExecutor` (`WorktreePatchArtifact` / `DeliverableSpec`) | agent-runtime (`/loops`) | 0.70.x | shipped — the generic coder surface (NOT the package root); `multiHarnessCoderFanout` is gone. |
+| `TraceSource` family (`createPushTraceSource` / `sandboxSessionTraceSource` / `ToolSpan`) | agent-runtime (`/loops`) | 0.70.x | shipped — replaces `createProductionTraceSink`. |
+| `createScopeAnalyst` / online `watchTrace` + settle `analyzeTrace` | agent-runtime (`/loops`) | 0.70.x | shipped |
+| MCP server (5 delegation tools)        | agent-runtime (`/mcp`)           | 0.70.x  | shipped  |
+| Sibling executor (default)             | agent-runtime (`/mcp`)           | 0.70.x  | shipped  |
+| Fleet executor (`TANGLE_FLEET_ID`)     | agent-runtime (`/mcp`)           | 0.70.x  | shipped  |
+| `defineAgent` manifest                 | agent-runtime (`/agent`)         | 0.70.x  | shipped  |
+| `createSurface{Improvement,Knowledge}` | agent-runtime (`/agent`)         | 0.70.x  | shipped  |
+| `improvementDriver` / `reflectiveGenerator` / `agenticGenerator` / `commandVerifier` | agent-runtime (`.`, package root) | 0.70.x | shipped — re-exported from root; no `/improvement` subpath. |
+| `runAnalystLoop`                       | agent-runtime (`/analyst-loop`)  | 0.70.x  | shipped in src; subpath NOT in `package.json` `exports` — see caveat below. |
+| `createOtelExporter` / `exportTraceBundle` / `toOtelJson` | agent-runtime (`.`) + sandbox | 0.70.x / 0.8.2 | shipped — `createOtelExporter` is agent-runtime root; `exportTraceBundle` / `toOtelJson` are sandbox. `withOtelPipeline` does NOT exist in agent-runtime (it is an agent-EVAL root export). |
+| `runImprovementLoop` / `runCampaign` / `selfImprove` / `defineAgentEval` / `gepaProposer` / `defaultProductionGate` | agent-eval (`/contract`) | 0.95.x | shipped — `/contract`, NOT root; replaces `runProductionLoop`. `runOptimization` is now internal (no longer exported). |
+| `runAgentMatrix` (cartesian, byAxis)   | agent-eval (`/matrix`)           | 0.95.x  | shipped  |
+| `runMultishot` / `runMultishotMatrix`  | agent-eval (`/multishot`)        | 0.95.x  | shipped  |
+| `assertRealBackend`                    | agent-eval (`.`)                 | 0.95.x  | shipped  |
+| Scorecard (`agentProfileHash` / `agentProfileId` / `agentProfileModelId`, diff) | agent-eval (`.`) | 0.95.x  | shipped  |
+| `buildAgentProfileCell` / `buildAgentInterfaceProfileCell` (`agent-interface-profile` kind) | agent-eval (`.`) | 0.95.x | shipped — `buildSandboxAgentProfileCell` removed in 0.94. |
+| `proposeAutomatedPullRequest` / `HeldOutGate` (class) | agent-eval (`.`)        | 0.95.x  | shipped  |
+| Wire server (`startServer`)            | agent-eval (`/wire`)             | 0.95.x  | shipped  |
+| `FileSystemTraceStore`                 | agent-eval (`/traces`)           | 0.95.x  | shipped  |
 | `proposeFromFindings`                  | agent-knowledge (`.`)            | 1.7.x   | shipped  |
 | `applyKnowledgeWriteBlocks`            | agent-knowledge (`.`)            | 1.7.x   | shipped  |
 | `searchKnowledge` / `tokenizeQuery`    | agent-knowledge (`.`)            | 1.7.x   | shipped  |
 | Researcher profile preset              | agent-runtime (`/profiles`)      | —       | deferred — currently a `ResearcherDelegate` interface, not a preset. |
 | `pnpm doctor:adoption` CLI             | agent-eval (or new substrate)    | —       | open issue — would automate the state-machine probe above.           |
-| Matrix `aggregateBy` named scopes      | agent-eval (`/matrix`)           | 0.93.x  | shipped  |
+| Matrix `aggregateBy` named scopes      | agent-eval (`/matrix`)           | 0.95.x  | shipped  |
+
+> **`runAnalystLoop` packaging caveat.** `runAnalystLoop` lives in
+> `src/analyst-loop/` and the repo's own example doc imports it from
+> `@tangle-network/agent-runtime/analyst-loop`, but as of agent-runtime 0.70.0
+> that subpath is NOT declared in `package.json` `exports` (no `./analyst-loop`
+> entry) and is not re-exported from any built barrel. Importing it from a
+> published install will fail to resolve until the package adds the subpath —
+> verify against the installed dist before relying on it.
 
 ## Anti-patterns (cross-cutting)
 
@@ -1307,21 +1326,28 @@ subsumed its patterns.
   stack: `AgentProfile`, `AgentProfileMcpServer`, `HarnessType`, `ReasoningEffort`,
   `Part`, `ToolPart`, plus the capability layer (`harnessSupportsModel`,
   `reasoningEffortsFor`, `reasoningLadder`). Import the profile types from here.
-- `@tangle-network/agent-runtime@0.65.x` README + `/loops` + `/runtime` +
-  `/profiles` + `/mcp` + `/agent` + `/analyst-loop` + `/intelligence`. Carries the
-  `runLoop` kernel, `Scope`/`Supervisor` + combinators, the `TraceSource` family,
-  the generic coder surface (`worktreeFanout`/`gateOnDeliverable`), and the OTEL
-  exporter. Peers `agent-eval >=0.93.0 <1.0.0`, `agent-interface ^0.10.0`,
-  `agent-knowledge ^1.7.0`, `sandbox ^0.8.0`.
-- `@tangle-network/agent-eval@0.93.x` README + `/matrix` + `/multishot` + `/wire` +
-  `/traces`. Carries `runImprovementLoop` / `runOptimization` / `runCampaign`
-  (top-level), `runAgentMatrix` (`/matrix`), `runMultishot` / `runMultishotMatrix`
-  (`/multishot`), `assertRealBackend`, scorecard.
+- `@tangle-network/agent-runtime@0.70.x` README + subpaths `/loops` +
+  `/profiles` + `/mcp` + `/agent` + `/intelligence`. The `/loops` subpath (the
+  published `src/runtime/` barrel) carries the `runLoop` kernel,
+  `Scope`/`Supervisor` + combinators, the `TraceSource` family, and the generic
+  coder surface (`worktreeFanout`/`gateOnDeliverable`) — NOT the package root.
+  `createOtelExporter` + the `improvementDriver` family are at the root. (There
+  is no `/runtime` export subpath; `/analyst-loop` is documented by the repo but
+  not yet declared in `exports` — see the analyst-loop caveat above.) Peers
+  `agent-eval >=0.93.0 <1.0.0` (pin `^0.95.0`), `agent-interface >=0.10.0 <1.0.0`,
+  `agent-knowledge >=1.7.0 <2.0.0`, `sandbox >=0.8.0 <1.0.0`.
+- `@tangle-network/agent-eval@0.95.x` README + subpaths `/contract` + `/matrix` +
+  `/multishot` + `/wire` + `/traces`. The loop/proposer/gate primitives —
+  `runImprovementLoop` / `runCampaign` / `selfImprove` / `defineAgentEval` /
+  `gepaProposer` / `defaultProductionGate` — are on `/contract` (NOT root;
+  `runOptimization` is internal). `runAgentMatrix` (`/matrix`), `runMultishot` /
+  `runMultishotMatrix` (`/multishot`), `assertRealBackend` / scorecard /
+  `proposeAutomatedPullRequest` / `HeldOutGate` (root).
 - `@tangle-network/agent-knowledge@1.7.x` README — `searchKnowledge`,
   `proposeFromFindings`, `applyKnowledgeWriteBlocks`, `tokenizeQuery`.
 - `@tangle-network/agent-profile-materialize@0.1.x` — `materializeProfile`,
   `WorkspacePlan`, `applyWorkspacePlan` (author the profile → materialize to disk).
-- `@tangle-network/sandbox@0.8.x` SDK — `Sandbox`, `SandboxInstance`,
+- `@tangle-network/sandbox@0.8.2` SDK — `Sandbox`, `SandboxInstance`,
   `SandboxEvent`, `exportTraceBundle`, `toOtelJson`. Re-exports `AgentProfile` /
   `AgentProfileMcpServer` from agent-interface for back-compat (prefer the
   canonical import from agent-interface).
@@ -1343,7 +1369,7 @@ surface so consumers can swap between products without re-learning the CLI.
 | `eval:matrix` | Sweep `AgentProfile[] × persona[] × reps`. The quality dashboard. | `@tangle-network/agent-eval/multishot` `runMultishotMatrix` |
 | `eval:improve` | Analyst loop — reads production traces → findings | `@tangle-network/agent-runtime/analyst-loop` `runAnalystLoop` |
 | `eval:calibrate` | Calibrate judge models against gold data | per-product |
-| `eval:optimize` | Mutator generates N candidates + matrix scores them + gate decides | `@tangle-network/agent-eval` `runOptimization` (top-level — there is no `/optimization` subpath) |
+| `eval:optimize` | Mutator generates N candidates + matrix scores them + gate decides | `@tangle-network/agent-eval/contract` `runImprovementLoop` (the `/contract` subpath; the inner `runOptimization` is internal-only, no longer exported) |
 | `eval:production-loop` | Scheduled job: improve + optimize + gate + open PR. Different from `eval:optimize` — adds the cron + PR-opening layer. | per-product `scripts/evals/run-production-loop.ts` |
 | `eval:viewer` | Single-file HTML viewer of any run artifact | per-product `eval/viewer/serve.mjs` |
 
@@ -1384,10 +1410,11 @@ optional infra.
 
 **Files:**
 
-- agent-runtime 0.65+ exports `createOtelExporter()` (top-level). The sandbox
-  side exports `exportTraceBundle` + `toOtelJson` for worker-box trace export.
-  (`withOtelPipeline` is NOT a published export — wire the exporter directly.)
-- agent-eval 0.93+ wraps judge / analyst / mutator LLM calls in spans when an
+- agent-runtime 0.70+ exports `createOtelExporter()` from the package root. The
+  sandbox side exports `exportTraceBundle` + `toOtelJson` for worker-box trace
+  export. (`withOtelPipeline` is NOT an agent-runtime export — it is an
+  agent-EVAL root export; for agent-runtime, wire the exporter directly.)
+- agent-eval 0.95+ wraps judge / analyst / mutator LLM calls in spans when an
   OTLP endpoint is configured. Verify the exact span-wrapper names against the
   installed dist before importing them by name.
 
@@ -1469,8 +1496,8 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://cloud.langfuse.com OTEL_EXPORTER_OTLP_HEADER
 
 **Cross-references:**
 
-- agent-runtime 0.65.x `createOtelExporter` source.
-- agent-eval 0.93.x judge + analyst + mutator span wrappers.
+- agent-runtime 0.70.x `createOtelExporter` source (package root).
+- agent-eval 0.95.x judge + analyst + mutator span wrappers.
 - `@tangle-network/sandbox` `exportTraceBundle` + `toOtelJson` helpers.
 - Phase 7 multishot — every conversation step emits spans; matrix-level
   spans wrap the cell execution.
