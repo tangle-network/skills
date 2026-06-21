@@ -1,6 +1,6 @@
 ---
 name: agent-stack-adoption
-description: "Adopt the self-improving Tangle agent stack (@tangle-network/{agent-interface,agent-runtime,agent-knowledge,agent-eval,sandbox,agent-profile-materialize,tcloud}) in any product. End-to-end pipeline checklist across 9 phases — single composer → ingestion → improvement-loop → MCP delegation → researcher → eval scenarios → viewer → matrix → live smoke → CI cron. Use when wiring a new product, auditing an existing product's adoption state, or extending an existing product with new phases."
+description: "Adopt the self-improving Tangle agent stack (@tangle-network/{agent-runtime,agent-knowledge,agent-eval,sandbox}) in a product. End-to-end pipeline checklist across 9 phases — single composer → ingestion → production-loop → MCP delegation → researcher → eval scenarios → viewer → matrix → live smoke → CI cron. Use when wiring a new product, auditing an existing product's adoption state, or extending an existing product with new phases."
 ---
 
 # Agent Stack Adoption — full pipeline checklist
@@ -12,38 +12,27 @@ description: "Adopt the self-improving Tangle agent stack (@tangle-network/{agen
 | If you are... | Read |
 |---|---|
 | Wiring the full stack across all 9 phases (this skill's scope) | **THIS skill** |
-| Looking up specific substrate primitives (defineAgent, runLoop, MCP delegation, the `TraceSource` family, assertRealBackend, scorecard, analyst-loop, runAgentMatrix) — the primitives THIS skill assembles into a pipeline | `agent-eval-adoption` — primitive reference companion |
+| Looking up specific substrate primitives (defineAgent, runLoop, MCP delegation, TraceSource, assertRealBackend, scorecard, analyst-loop, runAgentMatrix) — the primitives THIS skill assembles into a pipeline | `agent-eval-adoption` — primitive reference companion |
 | Working IN the agent-eval substrate repo, calling primitives correctly, OR setting up the canonical `eval/` folder + 3 pnpm scripts | `agent-eval` (project skill, auto-loaded in agent-eval repo) — substrate footgun bible + canonical consumer layout |
 | Building a judge component specifically | `eval-agent` — LLM-as-judge rubric generation |
 
-The Tangle agent stack composes ~6 packages into one pipeline, layered over a
-neutral contract at the bottom:
-
-- **`@tangle-network/agent-interface`** — the NEUTRAL contract layer beneath the
-  whole stack. Owns `AgentProfile` / `AgentProfileMcpServer` / `HarnessType` /
-  `ReasoningEffort` / `Part` / `ToolPart` plus a capability layer
-  (`harnessSupportsModel`, `reasoningEffortsFor`, `reasoningLadder`). Every other
-  package normalizes into these types, so a profile is harness-agnostic by
-  construction. Import `AgentProfile` / `AgentProfileMcpServer` from HERE
-  (canonical); `@tangle-network/sandbox` still re-exports them for back-compat.
-- **`@tangle-network/agent-profile-materialize`** — turns an `AgentProfile` into a
-  concrete on-disk workspace (`materializeProfile` → `WorkspacePlan`,
-  `applyWorkspacePlan`). The substrate that materializes the authored profile into
-  harness-shaped files.
-- **`@tangle-network/sandbox`** — runs the per-workspace box (`Sandbox`,
-  `SandboxInstance`, `SandboxEvent`).
-- **`@tangle-network/agent-runtime`** — drives the chat + delegation MCP, the
-  `runLoop` kernel, drivers/combinators, coder/researcher presets, the `TraceSource`
-  family, and `runAnalystLoop`.
-- **`@tangle-network/agent-knowledge`** — gates research outputs through a
-  propose-don't-apply layer.
-- **`@tangle-network/agent-eval`** — ingests the live trace stream into a held-out
-  gate that lands auto-PRs against the production prompt addendum; owns
-  `runImprovementLoop` (`/contract`) / `runAgentMatrix` (`/matrix`) /
-  `runMultishotMatrix` (`/multishot`).
-
-"Adopted" means the product runs through ALL nine phases below — anything less
-ships a partial loop that drifts. This skill is the state machine. Cross-link:
+The Tangle agent stack is a ~6-package stack that composes into one pipeline.
+Beneath everything sits `@tangle-network/agent-interface` — the NEUTRAL contract
+layer that owns the shared types every other package normalizes into
+(`AgentProfile`, `AgentProfileMcpServer`, `HarnessType`, `ReasoningEffort`,
+`Part`/`ToolPart`/`ToolState`) plus the capability layer
+(`harnessSupportsModel` / `reasoningEffortsFor` / `reasoningLadder`). On top of
+that contract: `@tangle-network/sandbox` runs the per-workspace box,
+`@tangle-network/agent-profile-materialize` turns an `AgentProfile` into a
+harness workspace (`materializeProfile` / `WorkspacePlan` / `applyWorkspacePlan`),
+`@tangle-network/agent-runtime` drives the chat + delegation MCP + the recursive
+Scope/Supervisor atom + worktree coder/researcher executors,
+`@tangle-network/agent-knowledge` gates research outputs through a
+propose-don't-apply layer, and `@tangle-network/agent-eval` ingests the live
+trace stream into a held-out gate that lands auto-PRs against the production
+prompt addendum. "Adopted" means the product runs through ALL nine phases below
+— anything less ships a partial loop that drifts. This skill is the state
+machine. Cross-link:
 [`agent-eval-adoption`](../agent-eval-adoption/SKILL.md) is the substrate-primitive
 reference (defineAgent, analyst loop, scorecard, ship-gate); this skill is the
 pipeline shape that consumes those primitives.
@@ -57,9 +46,9 @@ Three invariants. A product that breaks any of them is not adopted.
    guarded by a vitest assertion. This is the single load-bearing pattern that
    prevents every other drift mode.
 2. **Trace flow is auto-emitted at the sandbox boundary.** The chat handler
-   passes `traceSink` once; ingestion, redaction, OTLP forwarding, RunRecord
-   persistence, and analyst-loop input all derive from that one wire. Wire
-   once, every downstream flow is free.
+   records or collects a `TraceSource` once; ingestion, redaction, OTLP
+   forwarding, RunRecord persistence, and analyst-loop input all derive from
+   that one wire. Wire once, every downstream flow is free.
 3. **Matrix-testable.** Any axis combination — harness × model × persona × prompt
    addendum — runs through `runAgentMatrix` against the same composer. The
    matrix is for benchmarking, not parity; cells inherit the production
@@ -71,17 +60,14 @@ Each phase has Goal / Files / Code template / Verify / Anti-patterns /
 Cross-references. Execute in dependency order. Skipping or re-ordering breaks
 the loop closure.
 
-The file paths below are an illustrative layout for a TypeScript product that
-runs the chat handler on the edge (Cloudflare Workers / Remix / SvelteKit style)
-and keeps server-only modules under a `.server/` boundary. Adapt the paths to
-your own repo shape — what matters is the module responsibilities, not the
-exact directory names.
-
 ### Phase 0 — substrate deps + version pinning
 
-**Goal:** every consumer pins compatible versions of the substrate packages —
-the neutral `@tangle-network/agent-interface` contract at the bottom, the
-runtime/eval/knowledge/sandbox layers, and `@tangle-network/tcloud` for LLM calls.
+**Goal:** every consumer pins compatible versions of the substrate
+packages plus `@tangle-network/tcloud` for LLM calls. `@tangle-network/agent-interface`
+is the neutral contract beneath the stack — pin it explicitly so the shared
+types resolve to one copy. Re-check npm with
+`../agent-eval-adoption/scripts/check-substrate-versions.sh` before changing
+this template.
 
 **Files:** `package.json` (root or workspace package consuming the stack).
 
@@ -90,12 +76,12 @@ runtime/eval/knowledge/sandbox layers, and `@tangle-network/tcloud` for LLM call
 ```json
 {
   "dependencies": {
-    "@tangle-network/agent-interface": "^0.10.0",
+    "@tangle-network/agent-interface": "^0.10.1",
     "@tangle-network/agent-eval": "^0.95.0",
     "@tangle-network/agent-runtime": "^0.70.0",
     "@tangle-network/agent-knowledge": "^1.7.0",
-    "@tangle-network/sandbox": "^0.8.2",
     "@tangle-network/agent-profile-materialize": "^0.1.0",
+    "@tangle-network/sandbox": "^0.8.2",
     "@tangle-network/tcloud": "^0.4.13"
   },
   "pnpm": {
@@ -103,23 +89,16 @@ runtime/eval/knowledge/sandbox layers, and `@tangle-network/tcloud` for LLM call
     "minimumReleaseAgeExclude": [],
     "onlyBuiltDependencies": ["esbuild", "better-sqlite3"],
     "overrides": {
-      "@tangle-network/agent-eval": "^0.95.0",
-      "@tangle-network/agent-interface": "^0.10.0"
+      "@tangle-network/agent-eval": "^0.95.0"
     }
   }
 }
 ```
 
-`@tangle-network/agent-profile-materialize` is optional — pin it only if you
-materialize profiles to disk (Phase 1 composer can run without it).
-
 The `pnpm.overrides` clause collapses transitive duplicates — without it
 `@tangle-network/agent-runtime` ghosts a different `agent-eval` minor through
-its peerDep range. agent-interface goes in `overrides` too so the whole tree
-agrees on ONE copy of the contract types (a profile typed against two
-agent-interface minors is the canonical structural-mismatch bug). The 72-hour
-`minimumReleaseAge` quarantine catches the yank-window attack class for the
-whole pnpm tree.
+its peerDep range. The 72-hour `minimumReleaseAge` quarantine catches the
+yank-window attack class for the whole pnpm tree.
 
 **Verify:**
 
@@ -131,49 +110,44 @@ pnpm install --frozen-lockfile && pnpm dedupe --check
 **Anti-patterns:**
 
 - Floating `*` or `latest` ranges — catches a malicious yank-window publish.
-- Mixed versions between agent-runtime and its substrate peers. agent-runtime
-  0.70 declares `@tangle-network/agent-eval >=0.93.0 <1.0.0`,
-  `@tangle-network/agent-interface >=0.10.0 <1.0.0`,
-  `@tangle-network/agent-knowledge >=1.7.0 <2.0.0`, and
-  `@tangle-network/sandbox >=0.8.0 <1.0.0` as required peerDependencies. (The
-  eval floor is `>=0.93.0`, but agent-runtime 0.70.0 is the release that
-  rewired onto agent-eval 0.95.0's Proposer API — pin agent-eval `^0.95.0` to
-  match.) Pin inside
-  those ranges; drift breaks the analyst loop and the trace-type decode. (Confirm
-  the live peer range with `npm view @tangle-network/agent-runtime peerDependencies`.)
-- Omitting `minimumReleaseAge` — supply-chain hardening should pin a release-age
-  quarantine for every dependency in the tree.
+- Mixed minor versions between agent-runtime and agent-eval. agent-runtime
+  0.70 declares agent-eval as a required peerDependency in the `>=0.95.0 <1.0.0`
+  range; pinning agent-eval below that floor breaks the analyst loop and the
+  shared trace types.
+- Omitting `minimumReleaseAge` (see `~/.claude/CLAUDE.md` — supply-chain
+  hardening).
 
 **Cross-references:**
 
-- Reference (illustrative): your product's `package.json`.
-- agent-eval-adoption: "Key docs" anchor lists the canonical version line.
+- gtm-agent: `/home/drew/code/gtm-agent/package.json`
+- agent-eval-adoption: `references/current-substrate.md` lists the canonical
+  version line.
 
 ---
 
 ### Phase 1 — single AgentProfile composer (production AND eval consume it)
 
-**Goal:** one TypeScript function in your server-only sandbox module that returns
+**Goal:** one TypeScript function in `src/lib/.server/sandbox/` that returns
 the `AgentProfile` for a per-turn `box.streamPrompt` call. Eval canonical
 runner imports this function — never hand-rolls. This is the load-bearing
 pattern.
 
 **Files:**
 
-- `src/server/sandbox/index.ts` — composer + `buildDelegationMcpServer`.
-- `src/server/agent-profile.ts` — defines `AgentProfile` static parts
+- `src/lib/.server/sandbox/index.ts` — composer + `buildDelegationMcpServer`.
+- `src/lib/.server/agent-profile.ts` — defines `AgentProfile` static parts
   (skills, tools, permissions, system prompt).
 - `eval/profile-parity.test.ts` — vitest guard.
 
 **Code template:**
 
 ```ts
-// src/server/sandbox/index.ts
-// AgentProfile / AgentProfileMcpServer are owned by the neutral contract layer.
-// Import from @tangle-network/agent-interface (canonical); @tangle-network/sandbox
-// re-exports them for back-compat.
+// src/lib/.server/sandbox/index.ts
+// AgentProfile / AgentProfileMcpServer are owned by @tangle-network/agent-interface
+// (the neutral contract). @tangle-network/sandbox re-exports them for back-compat,
+// but import from the canonical owner.
 import type { AgentProfile, AgentProfileMcpServer } from '@tangle-network/agent-interface'
-import { PRODUCT_SYSTEM_PROMPT, productAgentProfile } from '../agent-profile'
+import { BASE_SYSTEM_PROMPT, productAgentProfile } from '../agent-profile'
 
 const DELEGATION_MCP_SERVER_KEY = 'agent-runtime-delegation'
 
@@ -219,7 +193,7 @@ export function composeProductionAgentProfile(
     ...productAgentProfile,
     name: options.name ?? productAgentProfile.name,
     prompt: {
-      systemPrompt: options.systemPromptOverride ?? PRODUCT_SYSTEM_PROMPT,
+      systemPrompt: options.systemPromptOverride ?? BASE_SYSTEM_PROMPT,
     },
     ...(delegationMcp ? { mcp: { ...(productAgentProfile.mcp ?? {}), ...delegationMcp } } : {}),
   }
@@ -229,7 +203,7 @@ export function composeProductionAgentProfile(
 ```ts
 // eval/profile-parity.test.ts — vitest
 import { describe, it, expect } from 'vitest'
-import { composeProductionAgentProfile } from '../src/server/sandbox'
+import { composeProductionAgentProfile } from '../src/lib/.server/sandbox'
 
 describe('eval AgentProfile mirrors production', () => {
   it('mounts the delegation MCP server with all five tools', () => {
@@ -260,22 +234,21 @@ pnpm vitest run eval/profile-parity.test.ts
 
 **Anti-patterns:**
 
-- **Parallel eval profile.** A common audit finding — the eval rubric
-  scores 0/N on delegation calls because the eval profile omitted the MCP
+- **Parallel eval profile.** Caught in gtm-agent before #145 — eval rubric
+  scored 0/N on delegation calls because the eval profile omitted the MCP
   entry. The parity test catches every regression of this class.
 - **Static `AgentProfileMcpServer` declaration in the base profile.** The
   sandbox SDK does NOT template `env.TANGLE_API_KEY`; a static declaration
   ships an empty key and the MCP server fails at stdin handshake. Compose at
-  runtime only — leave a comment next to the static `AgentProfile` parts
-  explaining why the delegation server is built per-call, not declared inline.
+  runtime only — gtm-agent's `agent-profile.ts:715-723` comment is the
+  canonical explanation.
 - **Forgetting to merge existing `mcp` map** — `composeProductionAgentProfile`
   spreads `productAgentProfile.mcp` first, then layers the delegation server
   on top. Skipping the spread silently drops product-specific MCP servers.
 
 **Cross-references:**
 
-- Reference pattern (illustrative): `your-agent/src/server/sandbox/index.ts` —
-  the composer + `buildDelegationMcpServer`.
+- gtm-agent: `/home/drew/code/gtm-agent/src/lib/.server/sandbox/index.ts:89`
 - agent-eval-adoption: "Production-profile reuse — the trap evals fall into"
   section.
 
@@ -291,9 +264,9 @@ in dev and OTLP-forwarded in deployed environments.
 **Files:**
 
 - `eval/ingestion-server.ts` — boots the wire server.
-- `src/server/ingestion/{client,redact,trace-store}.ts` (or a workspace
-  package's `services/ingestion/`) — chat-handler hooks.
-- `src/server/agent-runtime/trace-capture.ts` — per-product factory.
+- `packages/api-worker/src/services/ingestion/{client,redact,trace-store}.ts`
+  (or `src/lib/.server/ingestion/`) — chat-handler hooks.
+- `src/lib/.server/agent-runtime/trace-capture.ts` — per-product factory.
 - `.gitignore` — exclude `.production-data/`.
 
 **Code template:**
@@ -330,45 +303,34 @@ const shutdown = () => server.close(() => process.exit(0))
 process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown)
 ```
 
-Trace capture goes through the **`TraceSource`** family — the substrate- and
-harness-agnostic seam (the old `createProductionTraceSink` is gone). The common
-currency is agent-eval's `ToolSpan`; detection + the failure taxonomy live in
-agent-eval. Two source flavors:
-
-- **Owned tool loop** (router-tools / cli-bridge dispatch): `createPushTraceSource()`
-  → call `record(step)` per tool call.
-- **Sandbox / fleet box** (the production target): `sandboxSessionTraceSource(box,
-  sessionId, { harness })` reads `box.messages({ sessionId })` parts and decodes
-  per-harness tool calls into spans.
-
 ```ts
-// src/server/agent-runtime/trace-capture.ts
-import {
-  sandboxSessionTraceSource,
-  createPushTraceSource,
-  type TraceSource,
-} from '@tangle-network/agent-runtime/loops'
+// src/lib/.server/agent-runtime/trace-capture.ts
+// agent-runtime 0.70 replaced the old createProductionTraceSink with the
+// TraceSource family. ToolSpan (agent-eval) is the common currency; the same
+// streaming detectors + batch analyzers consume spans from EITHER path:
+//   - createPushTraceSource()        → owned in-process loops (record per step)
+//   - sandboxSessionTraceSource(...)  → sandbox / fleet box session parts
+import { sandboxSessionTraceSource, type SessionTraceBox, type TraceSource }
+  from '@tangle-network/agent-runtime/loops'
 
-// Sandbox/fleet path — collect spans from the live box session after a turn.
-export function boxTraceSource(box: SessionTraceBox, sessionId: string): TraceSource {
-  // `harness` selects the per-harness decoder ('opencode' | 'claude-code' | ...);
-  // omit to try every registered adapter. NOTE: codex emits no structured tool
-  // calls, so per-tool spans are unavailable for codex from any path.
+// Sandbox / fleet production path: read a box session's tool calls as ToolSpans.
+export function productionTraceSource(
+  box: SessionTraceBox,
+  sessionId: string,
+): TraceSource {
   return sandboxSessionTraceSource(box, sessionId, { harness: 'opencode' })
-}
-
-// Owned-loop path — for a local router-tools / cli-bridge dispatch loop.
-export function ownedTraceSource() {
-  const { source, record } = createPushTraceSource()
-  return { source, record }   // call record(step) for each tool call
 }
 ```
 
-Persist `await source.collect()` (the full `ToolSpan[]`) into the ingestion
-store, and forward to OTLP in deployed environments. The ingest client
-(`ingestion/client.ts`) MUST swallow network / server errors and `console.warn`
-only — live chat must never crash because ingestion is down. `redact.ts` strips
-PII (emails, names, IDs) before any event leaves the worker isolate.
+For an owned (non-box) loop, use `createPushTraceSource()` instead and feed each
+tool step through its `record(step)`. Forward the collected `ToolSpan[]` to your
+ingestion store / OTLP exporter — there is no single sink object anymore; the
+source is the seam.
+
+The ingest client (`services/ingestion/client.ts`) MUST swallow network /
+server errors and `console.warn` only — live chat must never crash because
+ingestion is down. `redact.ts` strips PII (emails, names, IDs) before any
+event leaves the worker isolate.
 
 **Verify:**
 
@@ -382,58 +344,50 @@ ls -la .production-data/traces/events.ndjson
 
 **Anti-patterns:**
 
-- **Throwing into the user path.** A classic incident: a misconfigured OTLP
-  endpoint crashed the chat-completion stream because trace capture threw. Keep
-  `source.collect()` + the ingest fetch behind a try/catch that `console.warn`s —
-  do NOT let a trace-store failure surface into the chat stream.
+- **Throwing into the user path.** Caught in creative-agent #147. A
+  misconfigured OTLP endpoint crashed the chat-completion stream because the
+  trace hook threw. Wrap trace collection/forwarding in your own try/catch that
+  `console.warn`s only — trace capture must never crash live chat.
 - **Losing `traceFlush` in `ctx.waitUntil`.** Cloudflare Workers tear down
   the isolate immediately on response — without `ctx.waitUntil(traceFlush())`
   the final batch of spans is dropped at request end.
-- **Missing redaction layer.** A known failure mode — PII lands in a shared
-  trace store. `redact.ts` strips before the ingest fetch.
+- **Missing redaction layer.** Caught in tax-agent #91 — PII landed in the
+  shared trace store. `redact.ts` strips before the ingest fetch.
 - **Committing `.production-data/`.** Gitignore it; the analyst loop reads
   from local disk in dev and from the OTLP-forwarded store in prod.
 
 **Cross-references:**
 
-- Reference pattern (illustrative): `your-agent/src/server/ingestion/`
-  (`client`, `redact`, `trace-store`) + `eval/ingestion-server.ts`.
-- agent-eval-adoption: "Production trace sink" section.
+- tax-agent: `/home/drew/code/tax-agent/packages/api-worker/src/services/ingestion/`
+- gtm-agent: `/home/drew/code/gtm-agent/eval/ingestion-server.ts`
+- agent-eval-adoption: production trace / TraceSource section.
 
 ---
 
-### Phase 3 — improvement-loop on real chat path
+### Phase 3 — production-loop on real chat path
 
-**Goal:** the improvement loop's holdout runner drives the SAME
+**Goal:** the production loop's holdout runner drives the SAME
 `runChatThroughRuntime` + `AgentExecutionBackend` that production uses. The
 loop converges on real agent behavior under candidate prompts — not on a
 regex over the addendum text.
 
-> **API note:** the loop runner is `runImprovementLoop` from
-> `@tangle-network/agent-eval/contract` (the loop/proposer/gate primitives moved
-> to the `/contract` subpath — they are NOT on the package root). `runProductionLoop`
-> was renamed — it no longer exists. `runImprovementLoop` rides on the internal
-> `runOptimization` (no longer a public export) which rides on `runCampaign`
-> (also `/contract`). Its options type is `RunImprovementLoopOptions`.
-
 **Files:**
 
-- `src/server/production-loop/index.ts` — `runProductionLoopOnce` +
+- `src/lib/.server/production-loop/index.ts` — `runProductionLoopOnce` +
   `buildHoldoutRunner`.
-- `src/server/production-loop/prompt-addendum.ts` — loop-owned surface.
-- `src/server/production-loop/scenarios.ts` — `LOOP_HOLDOUT_SCENARIOS`.
-- `src/server/production-loop/judges.ts` — multi-judge ensemble.
+- `src/lib/.server/production-loop/prompt-addendum.ts` — loop-owned surface.
+- `src/lib/.server/production-loop/scenarios.ts` — `PRODUCTION_LOOP_HOLDOUT_SCENARIOS`.
+- `src/lib/.server/production-loop/judges.ts` — multi-judge ensemble.
 - `tests/production-loop-real-worker.test.ts` — guard against fake-worker.
 
 **Code template:**
 
 ```ts
-// src/server/production-loop/index.ts (sketch)
-import { httpGithubClient } from '@tangle-network/agent-eval'
-import { runImprovementLoop } from '@tangle-network/agent-eval/contract'
+// src/lib/.server/production-loop/index.ts (sketch)
+import { runImprovementLoop } from '@tangle-network/agent-eval/campaign'
 import { runChatThroughRuntime } from '../agent-runtime/chat'
 import { composeProductionAgentProfile } from '../sandbox'
-import { PRODUCT_SYSTEM_PROMPT } from '../agent-profile'
+import { BASE_SYSTEM_PROMPT } from '../agent-profile'
 import { PRODUCTION_LOOP_ADDENDUM_BASELINE, PRODUCTION_LOOP_ADDENDUM_VERSION }
   from './prompt-addendum'
 
@@ -442,7 +396,7 @@ export function buildHoldoutRunner(opts: { llm: { apiKey: string; baseUrl: strin
   return {
     async run({ variant, scenarioId, rep, split, seed }) {
       const profile = composeProductionAgentProfile({ sandboxApiKey: opts.llm.apiKey })
-      const systemPrompt = `${PRODUCT_SYSTEM_PROMPT}\n\n${variant.payload.addendum}`
+      const systemPrompt = `${BASE_SYSTEM_PROMPT}\n\n${variant.payload.addendum}`
       // Drive the REAL chat path. Token usage flows from the backend's
       // `llm_call` events — if zero, the runner never reached the model.
       const result = await runChatThroughRuntime({
@@ -458,7 +412,7 @@ export function buildHoldoutRunner(opts: { llm: { apiKey: string; baseUrl: strin
 ```ts
 // tests/production-loop-real-worker.test.ts — guard
 import { describe, expect, it } from 'vitest'
-import { buildHoldoutRunner } from '../src/server/production-loop'
+import { buildHoldoutRunner } from '../src/lib/.server/production-loop'
 
 it('drives the real chat path with non-zero token usage', async () => {
   const invocations = { count: 0, lastUserMessage: null as string | null }
@@ -480,29 +434,28 @@ it('drives the real chat path with non-zero token usage', async () => {
 pnpm vitest run tests/production-loop-real-worker.test.ts
 # Expect: 3+ passed including the non-zero-token assertion.
 pnpm eval:production-loop -- --dry-run
-# Expect: ProductionLoopResult with .decision and .ship.dryRun: true.
+# Expect: RunImprovementLoopResult with .gateResult and optional .prResult.
 ```
 
 **Anti-patterns:**
 
-- **Fake-worker.** The most common regression on this phase. A historical
-  runner projected the variant's addendum into a synthetic assistant string
-  and judged that — the loop converged on a regex over the addendum text. The
-  `tokenUsage?.input > 0` assertion is the regression test — re-introduction
-  goes to zero, fail loud.
+- **Fake-worker.** Caught in gtm-agent #152 (and earlier in creative-agent
+  #168). The historical runner projected the variant's addendum into a
+  synthetic assistant string and judged that. The loop converged on a regex
+  over the addendum text. The `tokenUsage?.input > 0` assertion is the
+  regression test — re-introduction goes to zero, fail loud.
 - **Loop owning static skills.** Skills under `agent-prompt/skills/` are
   human-curated. The loop only rewrites `prompt-addendum.ts`. Mixing the
   two surfaces means a loop false-positive ships through the curated path
   without operator review.
 - **Single-judge ensemble.** A single judge develops a stable bias; the
-  loop converges on what that judge likes. Use 3+ diverse judges from
-  different model families — e.g. your product's `judges.ts` runs a small
-  ensemble of distinct models so no single bias dominates.
+  loop converges on what that judge likes. Use 3+ diverse judges (different
+  model families); gtm-agent's `judges.ts` runs kimi + glm + deepseek.
 
 **Cross-references:**
 
-- Reference pattern (illustrative): `your-agent/src/server/production-loop/index.ts`
-  (real-chat holdout runner) + `tests/production-loop-real-worker.test.ts`.
+- gtm-agent: `/home/drew/code/gtm-agent/src/lib/.server/production-loop/index.ts:110`
+- gtm-agent: `/home/drew/code/gtm-agent/tests/production-loop-real-worker.test.ts`
 - agent-eval-adoption: "Held-out promotion gate + `runImprovementLoop`".
 
 ---
@@ -516,9 +469,9 @@ sees them mid-turn and can dispatch coder/researcher workers.
 
 **Files:**
 
-- `src/server/sandbox/index.ts` — `buildDelegationMcpServer` (already in
+- `src/lib/.server/sandbox/index.ts` — `buildDelegationMcpServer` (already in
   Phase 1).
-- `src/server/agent-profile.ts` — `PRODUCT_SYSTEM_PROMPT` carries
+- `src/lib/.server/agent-profile.ts` — `BASE_SYSTEM_PROMPT` carries
   the delegation tools section + permissions block.
 - `.env.local` / worker secrets — `TANGLE_API_KEY` set.
 
@@ -532,7 +485,7 @@ You have five MCP tools that dispatch specialist agents in parallel sandboxes:
 - delegate_research({ question, namespace, sources?, config? }) — researcher loop
   that pulls evidence-bearing answers from the web, workspace corpus, twitter,
   github, docs. Returns a taskId immediately; researchers take ~30-180s. Use
-  for: audience research, competitor teardowns, recency-bound web evidence.
+  for: ICP audience research, competitor teardowns, recency-bound web evidence.
   namespace MUST be the workspace id so writes scope correctly.
 
 - delegate_code({ goal, repoRoot, variants?, config? }) — coder loop that
@@ -596,12 +549,11 @@ grep -c 'delegate_research' .production-data/traces/events.ndjson
 
 **Cross-references:**
 
-- Reference pattern (illustrative): `your-agent/src/server/agent-profile.ts`
-  (delegation tools section in the system prompt) +
-  `your-agent/src/server/sandbox/index.ts` (the composed MCP entry).
-- An on-chain coder-driver blueprint is the original MCP pattern that inspired
-  the substrate (a per-task sandbox dispatching a validated coder loop); the
-  substrate has since subsumed it.
+- gtm-agent: `/home/drew/code/gtm-agent/src/lib/.server/agent-profile.ts:78-94`
+  (delegation tools section in the production system prompt).
+- gtm-agent: `/home/drew/code/gtm-agent/src/lib/.server/sandbox/index.ts:89`
+- ai-trading-blueprint: the original coder-driver MCP pattern that inspired
+  the substrate (see `sdk-ts/`).
 - agent-eval-adoption: "MCP delegation tools — `@tangle-network/agent-runtime/mcp`".
 
 ---
@@ -615,7 +567,7 @@ outside its caller's namespace.
 
 **Files:**
 
-- `src/server/agent-knowledge/index.ts` — search + format-citations
+- `src/lib/.server/agent-knowledge/index.ts` — search + format-citations
   surface backed by `import.meta.glob('knowledge/**/*.md')`.
 - `knowledge/` — markdown corpus with frontmatter (authority, jurisdiction,
   last_verified).
@@ -625,7 +577,7 @@ outside its caller's namespace.
 **Code template:**
 
 ```ts
-// src/server/agent-knowledge/index.ts
+// src/lib/.server/agent-knowledge/index.ts
 import {
   parseFrontmatter, searchKnowledge as agentSearchKnowledge,
   tokenizeQuery,
@@ -634,7 +586,7 @@ import type { KnowledgeSearchResult } from '@tangle-network/agent-knowledge'
 
 const VITE_CORPUS_MODULES: Record<string, string> = (() => {
   try {
-    return import.meta.glob('../../../knowledge/**/*.md', {
+    return import.meta.glob('../../../../knowledge/**/*.md', {
       eager: true, query: '?raw', import: 'default',
     }) as Record<string, string>
   } catch { return {} }
@@ -668,16 +620,15 @@ tenant's namespace.
 pnpm tsx scripts/seed-knowledge.ts
 ls -la .agent-knowledge/index.json
 # Expect: index with corpus.pages.length > 0.
-pnpm vitest run src/server/agent-knowledge/
+pnpm vitest run src/lib/.server/agent-knowledge/
 ```
 
 **Anti-patterns:**
 
 - **Auto-applying researcher proposals.** Researchers are a calibrated false-
   positive source. Default `autoApply.knowledge.mode = 'write'` only AFTER
-  measuring producer precision against a held-out set. A high-stakes vertical
-  (e.g. a legal or tax agent) should stay at `'open-pr'` until precision is
-  proven, and only then flip to a confidence threshold like ≥0.85.
+  measuring producer precision against a held-out set (legal-agent uses
+  ≥0.85 confidence threshold; tax-agent stays at `'open-pr'`).
 - **Cross-tenant namespace bleed.** The researcher MCP enforces a per-call
   namespace; the caller must pass the active workspace id. Hardcoded /
   shared namespaces silently merge tenants.
@@ -688,9 +639,9 @@ pnpm vitest run src/server/agent-knowledge/
 
 **Cross-references:**
 
-- Reference pattern (illustrative): `your-agent/src/server/agent-knowledge/index.ts`
-  (search + citations) and a `knowledge/` corpus with authority/jurisdiction
-  frontmatter for high-stakes domains.
+- legal-agent: `/home/drew/code/legal-agent/src/lib/.server/agent-knowledge/index.ts`
+- tax-agent: `/home/drew/code/tax-agent/packages/api-worker/src/services/knowledge/`
+- creative-agent: `/home/drew/code/creative-agent/src/lib/.server/knowledge-research/`
 - agent-eval-adoption: "Analyst loop" — `createSurfaceKnowledgeAdapter`.
 
 ---
@@ -733,35 +684,35 @@ export interface DelegationScenario {
 
 export const DELEGATION_SCENARIOS: DelegationScenario[] = [
   {
-    id: 'founder-market-research',
-    personaId: 'founder',
-    title: 'Recency-bound market research',
-    userMessage: 'What is typical CAC for direct-to-retail in 2026?',
+    id: 'primary-buyer-research',
+    personaId: 'primary-buyer',
+    title: 'Market benchmark research',
+    userMessage: 'Research current acquisition benchmarks for our target buyer.',
     expectations: [
       { tool: 'delegate_research', expectedCount: 1,
-        argMatchers: ['CAC', 'retail', '2026'] },
+        argMatchers: ['benchmark', 'acquisition', 'target buyer'] },
     ],
     passThreshold: 0.7,
   },
   {
-    id: 'b2b-pipeline-puller',
-    personaId: 'b2b-saas-founder',
-    title: 'Pipeline scraper tool delegation',
-    userMessage: 'Build a tool that pulls Stripe MRR + Posthog signups.',
+    id: 'technical-evaluator-integration',
+    personaId: 'technical-evaluator',
+    title: 'Integration script delegation',
+    userMessage: 'Build a tool that pulls billing metrics and product signups.',
     expectations: [
       { tool: 'delegate_code', expectedCount: 1,
-        argMatchers: ['stripe', 'posthog'] },
+        argMatchers: ['billing', 'signups'] },
     ],
     passThreshold: 0.7,
   },
-  // ... scenarios for your product's other personas
+  // ... scenarios for buyer, operator, technical, support, and admin personas
 ]
 ```
 
 ```ts
 // eval/canonical-delegation.ts (sketch)
-import { composeProductionAgentProfile } from '../src/server/sandbox'
-import { runChatThroughRuntime } from '../src/server/agent-runtime/chat'
+import { composeProductionAgentProfile } from '../src/lib/.server/sandbox'
+import { runChatThroughRuntime } from '../src/lib/.server/agent-runtime/chat'
 
 export async function runDelegationScenario(scenario: DelegationScenario, opts: RunOpts) {
   const profile = composeProductionAgentProfile({ sandboxApiKey: opts.sandboxApiKey })
@@ -778,9 +729,9 @@ export async function runDelegationScenario(scenario: DelegationScenario, opts: 
 }
 ```
 
-**Aim for 5-10 scenarios** spanning the distinct personas your product serves
-(e.g. founder / operator / marketer / analyst / local-service). One scenario
-per delegation tool kind so coverage is even.
+**Aim for 5-10 scenarios** spanning at least: buyer, operator, technical,
+support, and admin personas (or product equivalents). One scenario per
+delegation tool kind so coverage is even.
 
 **Verify:**
 
@@ -788,7 +739,7 @@ per delegation tool kind so coverage is even.
 pnpm eval:delegation --backend sandbox
 # Expect: per-scenario JSON results under eval/.runs/<runId>/.
 # Composite ≥0.7 on ≥80% of scenarios for a passing run.
-pnpm eval:delegation --persona founder            # subset
+pnpm eval:delegation --persona primary-buyer     # subset
 pnpm eval:delegation --scenario competitor-dashboard
 ```
 
@@ -809,8 +760,8 @@ pnpm eval:delegation --scenario competitor-dashboard
 
 **Cross-references:**
 
-- Reference pattern (illustrative): `your-agent/eval/canonical-delegation.ts`
-  + `your-agent/tests/eval-delegation-scenarios.test.ts`.
+- gtm-agent: `/home/drew/code/gtm-agent/eval/canonical-delegation.ts`
+- gtm-agent: `/home/drew/code/gtm-agent/tests/eval-delegation-scenarios.test.ts`
 
 ---
 
@@ -819,14 +770,16 @@ pnpm eval:delegation --scenario competitor-dashboard
 **Goal:** three surfaces:
 - **Viewer** — single-file HTML at `eval/viewer/viewer.html` that loads a
   run's NDJSON artifacts and renders the trace + delegation timeline.
-- **Matrix** — `runAgentMatrix` (`@tangle-network/agent-eval/matrix`) sweeps the cartesian
-  product of (**AgentProfile** × persona × rep), aggregating by axis.
+- **Matrix** — `runAgentMatrix` (from `@tangle-network/agent-eval/matrix`)
+  sweeps the cartesian product of (**AgentProfile** × persona × rep),
+  aggregating by axis. For multi-turn driver-agent sweeps, agent-eval also
+  ships `runMultishotMatrix` (from `@tangle-network/agent-eval/multishot`).
 - **Multishot driver-agent** — `runMultishot` simulates a real user (LLM
   driver as persona) chatting with the agent across 10+ turns, with REAL
   inline tool execution (delegate_research + delegate_code), then runs THREE
   separate judges (conversation, code-review, content-quality).
 
-**The PRIMARY matrix axis MUST be `AgentProfile[]` (the canonical type from
+**The PRIMARY matrix axis MUST be `AgentProfile[]` (the type owned by
 `@tangle-network/agent-interface`).**
 
 Not `harness[]`, not `model[]`, not `reasoningLevel[]`. AgentProfile
@@ -850,26 +803,33 @@ matrix participants; build for that today.
 ```ts
 // eval/agent-profiles.ts
 import type { AgentProfile } from '@tangle-network/agent-interface'
-import { composeProductionAgentProfile } from '../src/server/sandbox'
+import { composeProductionAgentProfile } from '../src/lib/.server/sandbox'
 
 // Baseline = exact production composer output (eval must equal production)
 export const profileBaseline: AgentProfile = composeProductionAgentProfile()
 
-// AgentProfile carries the system prompt under `prompt.systemPrompt`
-// (there is no top-level `systemPrompt` field — it lives on `prompt`).
-const baseSystemPrompt = profileBaseline.prompt?.systemPrompt ?? ''
+function withSystemPromptAddendum(profile: AgentProfile, addendum: string): AgentProfile {
+  const base = profile.prompt?.systemPrompt ?? ''
+  return {
+    ...profile,
+    prompt: {
+      ...(profile.prompt ?? {}),
+      systemPrompt: [base, addendum].filter(Boolean).join('\n\n'),
+    },
+  }
+}
 
 // Delegation-heavy = same composer + override systemPrompt to push tool use
-export const profileDelegationHeavy: AgentProfile = {
-  ...profileBaseline,
-  prompt: { ...profileBaseline.prompt, systemPrompt: `${baseSystemPrompt}\n\nIMPORTANT: ALWAYS use delegate_research before answering audience questions. ALWAYS use delegate_code when the user asks for scripts, pipelines, or dashboards.` },
-}
+export const profileDelegationHeavy: AgentProfile = withSystemPromptAddendum(
+  profileBaseline,
+  'IMPORTANT: ALWAYS use delegate_research before answering audience questions. ALWAYS use delegate_code when the user asks for scripts, pipelines, or dashboards.',
+)
 
 // Interview-first = mandate 3 interview turns before any artifact
-export const profileInterviewFirst: AgentProfile = {
-  ...profileBaseline,
-  prompt: { ...profileBaseline.prompt, systemPrompt: `${baseSystemPrompt}\n\nMANDATORY: Spend the first 3 turns interviewing the user about audience, metrics, constraints. Do not produce artifacts until you have these answers.` },
-}
+export const profileInterviewFirst: AgentProfile = withSystemPromptAddendum(
+  profileBaseline,
+  'MANDATORY: Spend the first 3 turns interviewing the user about audience, metrics, constraints. Do not produce artifacts until you have these answers.',
+)
 
 export const PROFILES = {
   baseline: profileBaseline,
@@ -909,8 +869,9 @@ export async function runMultishot(opts: {
 ```ts
 // eval/matrix.ts
 import { runAgentMatrix } from '@tangle-network/agent-eval/matrix'
+import type { AgentProfile } from '@tangle-network/agent-interface'
 import { PROFILES } from './agent-profiles'
-import { PERSONAS } from './personas'
+import { PERSONAS, type Persona } from './personas'
 import { runMultishot } from './multishot'
 import { scoreConversation, scoreCodeArtifacts, scoreContentArtifacts } from './multishot-judges'
 
@@ -922,7 +883,8 @@ const result = await runAgentMatrix({
   reps: 1,
   maxConcurrency: 2,
   costCeiling: 10.0,
-  async runCell(cell, signal) {
+  async runCell(cell) {
+    const started = Date.now()
     const profile = cell.axes.profile.value as AgentProfile
     const persona = cell.axes.persona.value as Persona
     const sim     = await runMultishot({ profile, persona, maxTurns: 10 })
@@ -931,7 +893,12 @@ const result = await runAgentMatrix({
     const codeScore    = await scoreCodeArtifacts(sim.artifacts.filter((a) => a.type === 'code'))
     const contentScore = await scoreContentArtifacts(sim.artifacts.filter((a) => a.type !== 'code'))
     const composite    = (convoScore.composite + codeScore.composite + contentScore.composite) / 3
-    return { score: composite, costUsd: sim.costUsd, output: { transcript: sim.transcript, artifacts: sim.artifacts, scores: { convoScore, codeScore, contentScore } } }
+    return {
+      output: { transcript: sim.transcript, artifacts: sim.artifacts, scores: { convoScore, codeScore, contentScore } },
+      verdict: { valid: composite >= 0.8, score: composite, reason: 'three-judge composite' },
+      costUsd: sim.costUsd,
+      durationMs: Date.now() - started,
+    }
   },
 })
 
@@ -980,9 +947,9 @@ pnpm eval:matrix --reps 1 --max-concurrency 2
 
 **Cross-references:**
 
-- Reference pattern (illustrative): `your-agent/eval/viewer/viewer.html`
-  (single-file pattern) + `your-agent/eval/viewer/extract.ts`.
-- agent-eval source: the matrix runner in `@tangle-network/agent-eval/matrix`.
+- gtm-agent: `/home/drew/code/gtm-agent/eval/viewer/viewer.html` (single-file pattern)
+- gtm-agent: `/home/drew/code/gtm-agent/eval/viewer/extract.ts`
+- agent-eval source: `/home/drew/code/agent-eval/src/matrix/runner.ts`
 - agent-eval-adoption: "Cross-profile matrix — `runAgentMatrix`".
 
 ---
@@ -1008,19 +975,19 @@ chat handler (HTTP POST /chat)
                  └─ tool_call → delegate_research      Phase 4 (MCP mounted)
                       └─ child sandbox runs researcher Phase 5
                            └─ items[] returned via tool_result
-                 └─ traceSink(events)                  Phase 2
+                 └─ TraceSource capture                Phase 2
                       └─ POST /v1/traces/ingest        ingestion-server
                            └─ FileSystemTraceStore     .production-data/traces/
                                 └─ analyst-loop reads  Phase 3 input
                                      └─ findings.jsonl
-                                          └─ production-loop holdout gate
-                                               └─ httpGithubClient auto-PR
+                                          └─ improvement-loop holdout gate
+                                               └─ optional auto-PR
 ```
 
 **Verify:**
 
 ```bash
-pnpm tsx scripts/smoke-full-loop.ts --message "research CAC for B2B SaaS"
+pnpm tsx scripts/smoke-full-loop.ts --message "research acquisition benchmarks for our target buyer"
 # Expect every line of the trace flow to fire:
 #   [smoke] sandbox created (sandboxId=...)
 #   [smoke] tool_call delegate_research seen
@@ -1052,7 +1019,7 @@ pnpm tsx scripts/smoke-full-loop.ts --message "research CAC for B2B SaaS"
 
 **Cross-references:**
 
-- Reference pattern (illustrative): `your-agent/eval/.smoke/` (artifact format).
+- gtm-agent: `/home/drew/code/gtm-agent/eval/.smoke/` (artifact format).
 - agent-eval-adoption: "Live trace flow — the production-to-evolution pipeline".
 
 ---
@@ -1096,7 +1063,7 @@ permissions:
 
 jobs:
   production-loop:
-    runs-on: [self-hosted, your-runner-label]   # tcloud + cli-bridge reachable
+    runs-on: [self-hosted, staging-runner]   # tcloud + cli-bridge reachable
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -1125,7 +1092,7 @@ jobs:
           retention-days: 14
 ```
 
-**The loop-owned addendum surface** (`src/server/production-loop/prompt-addendum.ts`)
+**The loop-owned addendum surface** (`src/lib/.server/production-loop/prompt-addendum.ts`)
 is the ONLY file the loop rewrites. Static skills under `agent-prompt/skills/`
 are human-curated. Mixing the surfaces ships loop false-positives through the
 curated path.
@@ -1136,14 +1103,14 @@ curated path.
 gh workflow run production-loop --field dry_run=true
 gh run watch
 # Expect: workflow succeeds, artifact uploaded.
-# Inspect .evolve/optimization/*/ProductionLoopResult.json for .decision.
+# Inspect .evolve/optimization/*/RunImprovementLoopResult.json for .gateResult.
 ```
 
 **Anti-patterns:**
 
 - **`runs-on: ubuntu-latest`.** The `tcloud` backend + `cli-bridge`
-  require a self-hosted runner with network reach to the bridge. GitHub-hosted
-  runners can't reach it. Label your runner and target the label.
+  require self-hosted with `staging-runner` label. GitHub-hosted runners
+  can't reach the bridge.
 - **`cancel-in-progress: true`.** Two crons landing on the same SHA + a
   cancellation corrupts the scorecard append order. Always `false`.
 - **Scoped-down token.** `permissions:` must include `contents: write`,
@@ -1155,7 +1122,8 @@ gh run watch
 
 **Cross-references:**
 
-- Reference pattern (illustrative): `your-agent/.github/workflows/production-loop.yml`.
+- gtm-agent: `/home/drew/code/gtm-agent/.github/workflows/production-loop.yml`
+- tax-agent: `/home/drew/code/tax-agent/.github/workflows/production-loop.yml`
 - agent-eval-adoption: "CI workflow integration".
 
 ---
@@ -1194,80 +1162,66 @@ delegation. Phases 6-7 add evaluation. Phases 8-9 close the autonomous loop.
 
 Track this section against the released packages; bump as new primitives land.
 
-Versions below verified against the published dist (`npm pack` + grep). When the
-substrate moves, re-verify with `npm view @tangle-network/<pkg> version` and a dist
-grep — do NOT trust this table over the registry.
-
-| Primitive                              | Package / subpath                | Version | Status   |
+| Primitive                              | Package                          | Version | Status   |
 | -------------------------------------- | -------------------------------- | ------- | -------- |
-| Neutral contract (`AgentProfile` / `Part` / `ToolPart` / `HarnessType`) | agent-interface (`.`) | 0.10.x  | shipped  |
-| Capability layer (`harnessSupportsModel` / `reasoningEffortsFor` / `reasoningLadder`) | agent-interface (`.`) | 0.10.x | shipped |
-| `materializeProfile` / `applyWorkspacePlan` (`WorkspacePlan`) | agent-profile-materialize (`.`) | 0.1.x | shipped |
-| `runLoop` kernel                       | agent-runtime (`/loops`)         | 0.70.x  | shipped  |
-| Custom `Driver` on `runLoop` (refine / sample) | agent-runtime (`/loops`) | 0.70.x | shipped — author a `Driver`; `createRefineDriver` is gone. |
-| `Scope` / `Supervisor` + combinators (`fanout`/`loopUntil`/`panel`/`verify`/`pipeline`) | agent-runtime (`/loops`) | 0.70.x | shipped |
-| `coderProfile` preset                  | agent-runtime (`/profiles`)      | 0.70.x  | shipped  |
-| `worktreeFanout` / `gateOnDeliverable` / `patchDelivered` / `selectValidWinner` / `createWorktreeCliExecutor` (`WorktreePatchArtifact` / `DeliverableSpec`) | agent-runtime (`/loops`) | 0.70.x | shipped — the generic coder surface (NOT the package root); `multiHarnessCoderFanout` is gone. |
-| `TraceSource` family (`createPushTraceSource` / `sandboxSessionTraceSource` / `ToolSpan`) | agent-runtime (`/loops`) | 0.70.x | shipped — replaces `createProductionTraceSink`. |
-| `createScopeAnalyst` / online `watchTrace` + settle `analyzeTrace` | agent-runtime (`/loops`) | 0.70.x | shipped |
-| MCP server (5 delegation tools)        | agent-runtime (`/mcp`)           | 0.70.x  | shipped  |
-| Sibling executor (default)             | agent-runtime (`/mcp`)           | 0.70.x  | shipped  |
-| Fleet executor (`TANGLE_FLEET_ID`)     | agent-runtime (`/mcp`)           | 0.70.x  | shipped  |
-| `defineAgent` manifest                 | agent-runtime (`/agent`)         | 0.70.x  | shipped  |
-| `createSurface{Improvement,Knowledge}` | agent-runtime (`/agent`)         | 0.70.x  | shipped  |
-| `improvementDriver` / `reflectiveGenerator` / `agenticGenerator` / `commandVerifier` | agent-runtime (`.`, package root) | 0.70.x | shipped — re-exported from root; no `/improvement` subpath. |
-| `runAnalystLoop`                       | agent-runtime (`/analyst-loop`)  | 0.70.x  | shipped in src; subpath NOT in `package.json` `exports` — see caveat below. |
-| `createOtelExporter` / `exportTraceBundle` / `toOtelJson` | agent-runtime (`.`) + sandbox | 0.70.x / 0.8.2 | shipped — `createOtelExporter` is agent-runtime root; `exportTraceBundle` / `toOtelJson` are sandbox. `withOtelPipeline` does NOT exist in agent-runtime (it is an agent-EVAL root export). |
-| `runImprovementLoop` / `runCampaign` / `selfImprove` / `defineAgentEval` / `gepaProposer` / `defaultProductionGate` | agent-eval (`/contract`) | 0.95.x | shipped — `/contract`, NOT root; replaces `runProductionLoop`. `runOptimization` is now internal (no longer exported). |
-| `runAgentMatrix` (cartesian, byAxis)   | agent-eval (`/matrix`)           | 0.95.x  | shipped  |
-| `runMultishot` / `runMultishotMatrix`  | agent-eval (`/multishot`)        | 0.95.x  | shipped  |
-| `assertRealBackend`                    | agent-eval (`.`)                 | 0.95.x  | shipped  |
-| Scorecard (`agentProfileHash` / `agentProfileId` / `agentProfileModelId`, diff) | agent-eval (`.`) | 0.95.x  | shipped  |
-| `buildAgentProfileCell` / `buildAgentInterfaceProfileCell` (`agent-interface-profile` kind) | agent-eval (`.`) | 0.95.x | shipped — `buildSandboxAgentProfileCell` removed in 0.94. |
-| `proposeAutomatedPullRequest` / `HeldOutGate` (class) | agent-eval (`.`)        | 0.95.x  | shipped  |
-| Wire server (`startServer`)            | agent-eval (`/wire`)             | 0.95.x  | shipped  |
-| `FileSystemTraceStore`                 | agent-eval (`/traces`)           | 0.95.x  | shipped  |
-| `proposeFromFindings`                  | agent-knowledge (`.`)            | 1.7.x   | shipped  |
-| `applyKnowledgeWriteBlocks`            | agent-knowledge (`.`)            | 1.7.x   | shipped  |
-| `searchKnowledge` / `tokenizeQuery`    | agent-knowledge (`.`)            | 1.7.x   | shipped  |
-| Researcher profile preset              | agent-runtime (`/profiles`)      | —       | deferred — currently a `ResearcherDelegate` interface, not a preset. |
+| Neutral contract (`AgentProfile`, `HarnessType`, `Part`/`ToolPart`/`ToolState`, capability fns) | agent-interface | 0.10.1 | shipped |
+| `runLoop` kernel                       | agent-runtime                    | 0.70.0  | shipped  |
+| `Scope`/`Supervisor` recursive atom + coordination tools | agent-runtime/loops  | 0.70.0  | shipped  |
+| `FanoutVote` (combinators: `fanout`/`panel`/`verify`/`pipeline`) | agent-runtime/loops | 0.70.0 | shipped |
+| Custom `Driver` against `runLoop`      | agent-runtime/loops            | 0.70.0  | shipped |
+| `worktreeFanout` / `patchDelivered` / `createWorktreeCliExecutor` / `selectValidWinner` (raw `WorktreePatchArtifact` + `gateOnDeliverable(DeliverableSpec)`) | agent-runtime/loops | 0.70.0 | shipped |
+| MCP server (5 delegation tools)        | agent-runtime/mcp                | 0.70.0  | shipped  |
+| Sibling executor (default)             | agent-runtime/mcp                | 0.70.0  | shipped  |
+| Fleet executor (`TANGLE_FLEET_ID`)     | agent-runtime/mcp                | 0.70.0  | shipped  |
+| `defineAgent` manifest                 | agent-runtime/agent              | 0.70.0  | shipped  |
+| `createProductionTraceSink`            | agent-runtime                    | —       | REMOVED — replaced by the `TraceSource` family (`createPushTraceSource` / `sandboxSessionTraceSource`); `ToolSpan` is the common currency |
+| `createPushTraceSource` / `sandboxSessionTraceSource` (`ToolSpan` currency) | agent-runtime/loops | 0.70.0 | shipped |
+| `AnalystRegistry.run` + `FindingsStore.append` | agent-eval/analyst      | 0.95.1  | shipped  |
+| `runImprovementLoop` / `runOptimization` | agent-eval/campaign            | 0.95.1  | shipped |
+| `runAgentMatrix` (cartesian, byAxis)   | agent-eval/matrix                | 0.95.1  | shipped — lives in agent-eval, NOT agent-runtime |
+| `runMultishotMatrix` / `runMultishot`  | agent-eval/multishot             | 0.95.1  | shipped  |
+| `assertRealBackend`                    | agent-eval                       | 0.95.1  | shipped  |
+| Scorecard (`agentProfileHash`, diff)   | agent-eval                       | 0.95.1  | shipped  |
+| Wire server (`startServer`)            | agent-eval/wire                  | 0.95.1  | shipped  |
+| `FileSystemTraceStore`                 | agent-eval/traces                | 0.95.1  | shipped  |
+| `proposeFromFindings`                  | agent-knowledge                  | 1.7.0   | shipped  |
+| `applyKnowledgeWriteBlocks`            | agent-knowledge                  | 1.7.0   | shipped  |
+| `materializeProfile` / `applyWorkspacePlan` (`WorkspacePlan`) | agent-profile-materialize | 0.1.0 | shipped |
+| Researcher profile preset              | agent-runtime/profiles           | —       | deferred — currently a `ResearcherDelegate` interface, not a preset. |
+| Council / Decompose / Pipeline drivers | agent-runtime/loops            | —       | deferred — build a custom `Driver` against the kernel, or compose `pipeline`/`panel` combinators. |
+| `mintScopedToken` on `SandboxInstance` | sandbox                          | 0.8.2   | deferred — products currently `fetch /scoped-token` directly.        |
 | `pnpm doctor:adoption` CLI             | agent-eval (or new substrate)    | —       | open issue — would automate the state-machine probe above.           |
-| Matrix `aggregateBy` named scopes      | agent-eval (`/matrix`)           | 0.95.x  | shipped  |
-
-> **`runAnalystLoop` packaging caveat.** `runAnalystLoop` lives in
-> `src/analyst-loop/` and the repo's own example doc imports it from
-> `@tangle-network/agent-runtime/analyst-loop`, but as of agent-runtime 0.70.0
-> that subpath is NOT declared in `package.json` `exports` (no `./analyst-loop`
-> entry) and is not re-exported from any built barrel. Importing it from a
-> published install will fail to resolve until the package adds the subpath —
-> verify against the installed dist before relying on it.
+| Matrix `aggregateBy` named scopes      | agent-eval/matrix                | 0.95.1  | shipped  |
 
 ## Anti-patterns (cross-cutting)
 
-Each is caught in at least one real adoption. The fix is always "extend, don't
+Each is caught in at least one product. The fix is always "extend, don't
 duplicate."
 
-1. **Fake-worker** — the holdout runner projects the addendum into a synthetic
-   string and judges that. Fix: assert `tokenUsage.input > 0` per Phase 3.
-2. **Parallel eval profile** — eval hand-rolls an `AgentProfile` that omits
-   MCP / permissions / mounts. Fix: parity test per Phase 1.
-3. **Silent trace redaction** — PII lands in the shared store. Fix: redaction
-   layer per Phase 2.
-4. **Transport with no `tools` field** — `createOpenAICompatibleBackend` POSTs
-   `{ messages }` only; MCP tools never surface. Fix: sandbox-client backend
-   per Phase 6.
-5. **Backend errors swallowed** — a 402 becomes a `backend_error` stream event;
-   the harness reports "no tool call." Fix: surface `backend_error` on
-   `result.error` per Phase 6.
-6. **Empty `TANGLE_API_KEY`** — static `AgentProfileMcpServer.env` doesn't
-   template. Fix: runtime composer per Phase 1.
+1. **Fake-worker** — caught in gtm-agent #152, creative-agent #168. Holdout
+   runner projects the addendum into a synthetic string and judges that.
+   Fix: assert `tokenUsage.input > 0` per Phase 3.
+2. **Parallel eval profile** — caught in gtm-agent #145. Eval hand-rolls an
+   `AgentProfile` that omits MCP / permissions / mounts. Fix: parity test
+   per Phase 1.
+3. **Silent trace redaction** — caught in tax-agent #91. PII landed in the
+   shared store. Fix: redaction layer per Phase 2.
+4. **Transport with no `tools` field** — caught reviewing creative-agent's
+   eval. `createOpenAICompatibleBackend` POSTs `{ messages }` only; MCP
+   tools never surface. Fix: sandbox-client backend per Phase 6.
+5. **Backend errors swallowed** — caught across all four products. A 402
+   becomes a `backend_error` stream event; harness reports "no tool call."
+   Fix: surface `backend_error` on `result.error` per Phase 6.
+6. **Empty `TANGLE_API_KEY`** — caught in gtm-agent's first sandbox build.
+   Static `AgentProfileMcpServer.env` doesn't template. Fix: runtime
+   composer per Phase 1.
 7. **`TANGLE_SANDBOX_API_KEY` vs `TANGLE_API_KEY` split** — the MCP bin
    reads `TANGLE_API_KEY` only. Products that previously used a separate
    sandbox-key var need to unify. Fix: name the env var
    `TANGLE_API_KEY` everywhere; the bin's expectation is hard-coded.
-8. **Scorecard JSONL gitignored** — the cross-commit timeline can't compute
-   without the prior run's row. Fix: commit `eval/.scorecard.jsonl` per
-   Phase 5 of agent-eval-adoption.
+8. **Scorecard JSONL gitignored** — caught in tax-agent's initial wiring.
+   The cross-commit timeline can't compute without the prior run's row.
+   Fix: commit `eval/.scorecard.jsonl` per Phase 5 of agent-eval-adoption.
 9. **Auto-applied improvement adapter without precision data** — default
    `'open-pr'`, flip to `'write'` only after measuring producer precision.
    See Phase 5.
@@ -1298,69 +1252,68 @@ substrate-primitive depth — defineAgent, analyst loop internals, scorecard
 mechanics, NaN-p verdict traps, Welch's t-test, held-out gate. This skill
 is the WHEN and SEQUENCE; that skill is the HOW and WHY.
 
-## Reference layout (audit + extract patterns)
+## Reference products (audit + extract patterns)
 
-The most instructive product to study is one where every phase is implemented
-end-to-end. Whatever your fullest reference is, extract these surfaces:
-
-- `src/server/sandbox/index.ts` — Phase 1 composer + delegation MCP.
-- `src/server/agent-profile.ts` — Phase 4 system prompt with tools section.
-- `src/server/production-loop/index.ts` — Phase 3 real-chat runner.
-- `eval/canonical-delegation.ts` — Phase 6 delegation scenarios harness.
-- `eval/viewer/viewer.html` — Phase 7 single-file viewer.
-- `eval/.runs/` — example artifact layout.
-- `.github/workflows/production-loop.yml` — Phase 9 CI cron.
-- `tests/production-loop-real-worker.test.ts` — Phase 3 fake-worker guard.
-
-Vertical agents adopt the same shape with domain-specific knowledge corpora —
-for example a content agent, a tax agent, or a research agent will each mount
-Phase 2 ingestion (`src/server/ingestion/{client,redact,trace-store}.ts`) and
-a Phase 5 knowledge namespace (`src/server/agent-knowledge/index.ts`) tuned to
-their domain. An on-chain coder-driver blueprint is the original MCP pattern
-that inspired the substrate; read it for context only, the substrate has
-subsumed its patterns.
+- **gtm-agent** (`/home/drew/code/gtm-agent`) — most complete adoption;
+  every phase implemented. Read first.
+  - `src/lib/.server/sandbox/index.ts` — Phase 1 composer + delegation MCP.
+  - `src/lib/.server/agent-profile.ts` — Phase 4 system prompt with tools section.
+  - `src/lib/.server/production-loop/index.ts` — Phase 3 real-chat runner.
+  - `eval/canonical-delegation.ts` — Phase 6 delegation scenarios harness.
+  - `eval/viewer/viewer.html` — Phase 7 single-file viewer.
+  - `eval/.runs/` — example artifact layout.
+  - `.github/workflows/production-loop.yml` — Phase 9 CI cron.
+  - `tests/production-loop-real-worker.test.ts` — Phase 3 fake-worker guard.
+- **tax-agent** (`/home/drew/code/tax-agent`) — production trace + feedback
+  ingestion mounted.
+  - `packages/api-worker/src/services/ingestion/{client,redact,trace-store}.ts`
+- **creative-agent** (`/home/drew/code/creative-agent`) — GEPA reference impl
+  + defineAgent manifest.
+  - `eval/agent.config.ts`
+- **legal-agent** (`/home/drew/code/legal-agent`) — researcher integration
+  patterns + jurisdictional knowledge corpus.
+  - `src/lib/.server/agent-knowledge/index.ts`
+- **ai-trading-blueprint** (`/home/drew/code/ai-trading-blueprint`) —
+  original coder-driver MCP pattern that inspired the substrate. Read for
+  context only; the substrate has subsumed its patterns.
 
 ## Key docs
 
-- [`agent-eval-adoption`](../agent-eval-adoption/SKILL.md) — substrate
+- [`agent-eval-adoption`](../../../agent-eval-adoption/skills/agent-eval-adoption/SKILL.md) — substrate
   primitives, traces, judges, scorecard, ship-gate. Pair with this skill.
-- `@tangle-network/agent-interface@0.10.x` — the NEUTRAL contract beneath the
-  stack: `AgentProfile`, `AgentProfileMcpServer`, `HarnessType`, `ReasoningEffort`,
-  `Part`, `ToolPart`, plus the capability layer (`harnessSupportsModel`,
-  `reasoningEffortsFor`, `reasoningLadder`). Import the profile types from here.
-- `@tangle-network/agent-runtime@0.70.x` README + subpaths `/loops` +
-  `/profiles` + `/mcp` + `/agent` + `/intelligence`. The `/loops` subpath (the
-  published `src/runtime/` barrel) carries the `runLoop` kernel,
-  `Scope`/`Supervisor` + combinators, the `TraceSource` family, and the generic
-  coder surface (`worktreeFanout`/`gateOnDeliverable`) — NOT the package root.
-  `createOtelExporter` + the `improvementDriver` family are at the root. (There
-  is no `/runtime` export subpath; `/analyst-loop` is documented by the repo but
-  not yet declared in `exports` — see the analyst-loop caveat above.) Peers
-  `agent-eval >=0.93.0 <1.0.0` (pin `^0.95.0`), `agent-interface >=0.10.0 <1.0.0`,
-  `agent-knowledge >=1.7.0 <2.0.0`, `sandbox >=0.8.0 <1.0.0`.
-- `@tangle-network/agent-eval@0.95.x` README + subpaths `/contract` + `/matrix` +
-  `/multishot` + `/wire` + `/traces`. The loop/proposer/gate primitives —
-  `runImprovementLoop` / `runCampaign` / `selfImprove` / `defineAgentEval` /
-  `gepaProposer` / `defaultProductionGate` — are on `/contract` (NOT root;
-  `runOptimization` is internal). `runAgentMatrix` (`/matrix`), `runMultishot` /
-  `runMultishotMatrix` (`/multishot`), `assertRealBackend` / scorecard /
-  `proposeAutomatedPullRequest` / `HeldOutGate` (root).
+- [`agent-eval-adoption/references/current-substrate.md`](../../../agent-eval-adoption/skills/agent-eval-adoption/references/current-substrate.md)
+  — current package line and removed-symbol checks.
+- `@tangle-network/agent-interface@0.10.x` — the neutral contract beneath the
+  stack. Owns `AgentProfile`, `AgentProfileMcpServer`, `HarnessType`,
+  `ReasoningEffort`, `Part`/`ToolPart`/`ToolState` + the capability layer
+  (`harnessSupportsModel`, `reasoningEffortsFor`, `reasoningLadder`,
+  `defineAgentProfile`, `mergeAgentProfiles`). Single source of truth — import
+  shared types from here, not from sandbox/runtime re-exports.
+- `@tangle-network/agent-runtime@0.70.x` README + root + `/loops` +
+  `/profiles` + `/mcp` + `/agent` + `/intelligence`. The `TraceSource` family
+  (`createPushTraceSource` / `sandboxSessionTraceSource`, `ToolSpan` currency)
+  replaced the old `createProductionTraceSink`; the Scope/Supervisor atom +
+  worktree executors are exported from `/loops`. Peers agent-eval `>=0.95.0 <1.0.0`.
+- `@tangle-network/agent-eval@0.95.x` README + `/campaign`
+  (`runImprovementLoop`, `runOptimization`) + `/matrix` (`runAgentMatrix`) +
+  `/multishot` (`runMultishotMatrix` / `runMultishot`) + `/wire` + `/traces`.
 - `@tangle-network/agent-knowledge@1.7.x` README — `searchKnowledge`,
-  `proposeFromFindings`, `applyKnowledgeWriteBlocks`, `tokenizeQuery`.
+  `proposeFromFindings`, `applyKnowledgeWriteBlocks`.
 - `@tangle-network/agent-profile-materialize@0.1.x` — `materializeProfile`,
-  `WorkspacePlan`, `applyWorkspacePlan` (author the profile → materialize to disk).
+  `WorkspacePlan`, `applyWorkspacePlan` (turn an `AgentProfile` into a harness
+  workspace).
 - `@tangle-network/sandbox@0.8.2` SDK — `Sandbox`, `SandboxInstance`,
-  `SandboxEvent`, `exportTraceBundle`, `toOtelJson`. Re-exports `AgentProfile` /
-  `AgentProfileMcpServer` from agent-interface for back-compat (prefer the
-  canonical import from agent-interface).
+  `AgentProfile`, `AgentProfileMcpServer` (re-exported from agent-interface),
+  `SandboxEvent`, `exportTraceBundle`, `toOtelJson`.
 
 ---
 
 ## Canonical eval surface — what scripts every product MUST expose
 
-Eval scripts sprawl fast — products accumulate a dozen near-duplicate scripts,
-plus two-pointing-at-the-same-file bugs. Standardize on a single canonical
-surface so consumers can swap between products without re-learning the CLI.
+Across 5 audited products, eval scripts have sprawled (12 in gtm, 9 in
+creative, only 1 in agent-builder, two-pointing-at-the-same-script bugs
+in gtm). Standardize on a single canonical surface so consumers can swap
+between products without re-learning the CLI.
 
 **Required scripts** (every product exposes these by name):
 
@@ -1368,30 +1321,31 @@ surface so consumers can swap between products without re-learning the CLI.
 |---|---|---|
 | `eval` | Canonical single-shot persona-driven eval. One scenario or all. | per-product `eval/canonical.ts` or `tests/eval/canonical.ts` |
 | `eval:multishot` | Single multi-turn driver-agent run (debug + iterate before matrix) | `@tangle-network/agent-eval/multishot` |
-| `eval:matrix` | Sweep `AgentProfile[] × persona[] × reps`. The quality dashboard. | `@tangle-network/agent-eval/multishot` `runMultishotMatrix` |
-| `eval:improve` | Analyst loop — reads production traces → findings | `@tangle-network/agent-runtime/analyst-loop` `runAnalystLoop` |
+| `eval:matrix` | Sweep `AgentProfile[] × persona[] × reps`. The quality dashboard. | `@tangle-network/agent-eval/matrix` `runAgentMatrix` |
+| `eval:improve` | Analyst pass — reads production traces → findings | `@tangle-network/agent-eval/analyst` `AnalystRegistry.run` |
 | `eval:calibrate` | Calibrate judge models against gold data | per-product |
-| `eval:optimize` | Mutator generates N candidates + matrix scores them + gate decides | `@tangle-network/agent-eval/contract` `runImprovementLoop` (the `/contract` subpath; the inner `runOptimization` is internal-only, no longer exported) |
+| `eval:optimize` | Mutator generates N candidates + matrix scores them + gate decides | `@tangle-network/agent-eval/campaign` `runOptimization` |
 | `eval:production-loop` | Scheduled job: improve + optimize + gate + open PR. Different from `eval:optimize` — adds the cron + PR-opening layer. | per-product `scripts/evals/run-production-loop.ts` |
 | `eval:viewer` | Single-file HTML viewer of any run artifact | per-product `eval/viewer/serve.mjs` |
 
 **Optional scripts** (domain-specific, name freely):
 
 - `eval:redteam` — adversarial scenarios
-- `eval:delegation` — agents-call-MCP-tools-as-tests
+- `eval:delegation` — agents-call-MCP-tools-as-tests (gtm-style)
 - `eval:harvest` — pull gold items from production traces
 - `eval:video-*`, `eval:product`, `eval:dual` — per-domain extensions
 
 **Forbidden:**
 
-- **Two scripts pointing at the same .ts file** — pick one canonical name and delete the other. If `eval:optimize` and `eval:production-loop` resolve to the same file, that's a bug, not a feature.
+- **Two scripts pointing at the same .ts file** — pick one canonical name and delete the other. gtm currently has `eval:optimize` === `eval:production-loop` as the same file. That's a bug, not a feature.
 - **`eval:evolve` as a separate script** — prompt evolution belongs inside `eval:optimize` (it's one of the mutator strategies). Keep the legacy script as a thin alias for one minor, then delete.
 - **`eval:driver` as a separate script** — multi-turn driver-agent IS `eval:multishot`. Rename one-off `eval:driver` scripts to `eval:multishot` so the substrate's pattern propagates.
 
 **Cross-references:**
 
-- This skill's Phase 7 — how to wire multishot + matrix on the substrate.
-- agent-eval-adoption skill — the substrate primitives for each script.
+- agent-stack-adoption skill Phase 7 — how to wire multishot + matrix on the substrate
+- agent-eval-adoption skill — the substrate primitives for each script
+- gtm-agent #161, legal-agent #106, tax-agent #101 — reference implementations of the canonical surface
 
 ---
 
@@ -1412,13 +1366,12 @@ optional infra.
 
 **Files:**
 
-- agent-runtime 0.70+ exports `createOtelExporter()` from the package root. The
-  sandbox side exports `exportTraceBundle` + `toOtelJson` for worker-box trace
-  export. (`withOtelPipeline` is NOT an agent-runtime export — it is an
-  agent-EVAL root export; for agent-runtime, wire the exporter directly.)
-- agent-eval 0.95+ wraps judge / analyst / mutator LLM calls in spans when an
-  OTLP endpoint is configured. Verify the exact span-wrapper names against the
-  installed dist before importing them by name.
+- `@tangle-network/agent-runtime@0.70.x` root exports `createOtelExporter`,
+  `buildLoopOtelSpans`, and `loopEventToOtelSpan`.
+- `@tangle-network/agent-eval@0.95.x` root exports `withOtelPipeline`,
+  `createOtelExporter`, `createOtelTracingStore`, and `isOtelConfigured`.
+- `@tangle-network/agent-eval/adapters/otel` exports `createOtelBridge` for
+  forwarding OpenTelemetry-shaped spans into hosted ingest.
 
 **Code template — enable end-to-end OTEL:**
 
@@ -1498,7 +1451,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://cloud.langfuse.com OTEL_EXPORTER_OTLP_HEADER
 
 **Cross-references:**
 
-- agent-runtime 0.70.x `createOtelExporter` source (package root).
+- agent-runtime 0.70.x OTEL exporter source.
 - agent-eval 0.95.x judge + analyst + mutator span wrappers.
 - `@tangle-network/sandbox` `exportTraceBundle` + `toOtelJson` helpers.
 - Phase 7 multishot — every conversation step emits spans; matrix-level
