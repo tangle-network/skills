@@ -147,7 +147,7 @@ pattern.
 // (the neutral contract). @tangle-network/sandbox re-exports them for back-compat,
 // but import from the canonical owner.
 import type { AgentProfile, AgentProfileMcpServer } from '@tangle-network/agent-interface'
-import { OPERATOR_CEO_SYSTEM_PROMPT, productAgentProfile } from '../agent-profile'
+import { BASE_SYSTEM_PROMPT, productAgentProfile } from '../agent-profile'
 
 const DELEGATION_MCP_SERVER_KEY = 'agent-runtime-delegation'
 
@@ -193,7 +193,7 @@ export function composeProductionAgentProfile(
     ...productAgentProfile,
     name: options.name ?? productAgentProfile.name,
     prompt: {
-      systemPrompt: options.systemPromptOverride ?? OPERATOR_CEO_SYSTEM_PROMPT,
+      systemPrompt: options.systemPromptOverride ?? BASE_SYSTEM_PROMPT,
     },
     ...(delegationMcp ? { mcp: { ...(productAgentProfile.mcp ?? {}), ...delegationMcp } } : {}),
   }
@@ -310,7 +310,7 @@ process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown)
 // streaming detectors + batch analyzers consume spans from EITHER path:
 //   - createPushTraceSource()        → owned in-process loops (record per step)
 //   - sandboxSessionTraceSource(...)  → sandbox / fleet box session parts
-import { sandboxSessionTraceSource, type TraceSource }
+import { sandboxSessionTraceSource, type SessionTraceBox, type TraceSource }
   from '@tangle-network/agent-runtime/loops'
 
 // Sandbox / fleet production path: read a box session's tool calls as ToolSpans.
@@ -373,10 +373,10 @@ regex over the addendum text.
 
 **Files:**
 
-- `src/lib/.server/production-loop/index.ts` — `runGtmProductionLoopOnce` +
+- `src/lib/.server/production-loop/index.ts` — `runProductionLoopOnce` +
   `buildHoldoutRunner`.
 - `src/lib/.server/production-loop/prompt-addendum.ts` — loop-owned surface.
-- `src/lib/.server/production-loop/scenarios.ts` — `GTM_LOOP_HOLDOUT_SCENARIOS`.
+- `src/lib/.server/production-loop/scenarios.ts` — `PRODUCTION_LOOP_HOLDOUT_SCENARIOS`.
 - `src/lib/.server/production-loop/judges.ts` — multi-judge ensemble.
 - `tests/production-loop-real-worker.test.ts` — guard against fake-worker.
 
@@ -387,7 +387,7 @@ regex over the addendum text.
 import { runImprovementLoop } from '@tangle-network/agent-eval/campaign'
 import { runChatThroughRuntime } from '../agent-runtime/chat'
 import { composeProductionAgentProfile } from '../sandbox'
-import { OPERATOR_CEO_SYSTEM_PROMPT } from '../agent-profile'
+import { BASE_SYSTEM_PROMPT } from '../agent-profile'
 import { PRODUCTION_LOOP_ADDENDUM_BASELINE, PRODUCTION_LOOP_ADDENDUM_VERSION }
   from './prompt-addendum'
 
@@ -396,7 +396,7 @@ export function buildHoldoutRunner(opts: { llm: { apiKey: string; baseUrl: strin
   return {
     async run({ variant, scenarioId, rep, split, seed }) {
       const profile = composeProductionAgentProfile({ sandboxApiKey: opts.llm.apiKey })
-      const systemPrompt = `${OPERATOR_CEO_SYSTEM_PROMPT}\n\n${variant.payload.addendum}`
+      const systemPrompt = `${BASE_SYSTEM_PROMPT}\n\n${variant.payload.addendum}`
       // Drive the REAL chat path. Token usage flows from the backend's
       // `llm_call` events — if zero, the runner never reached the model.
       const result = await runChatThroughRuntime({
@@ -471,7 +471,7 @@ sees them mid-turn and can dispatch coder/researcher workers.
 
 - `src/lib/.server/sandbox/index.ts` — `buildDelegationMcpServer` (already in
   Phase 1).
-- `src/lib/.server/agent-profile.ts` — `OPERATOR_CEO_SYSTEM_PROMPT` carries
+- `src/lib/.server/agent-profile.ts` — `BASE_SYSTEM_PROMPT` carries
   the delegation tools section + permissions block.
 - `.env.local` / worker secrets — `TANGLE_API_KEY` set.
 
@@ -550,7 +550,7 @@ grep -c 'delegate_research' .production-data/traces/events.ndjson
 **Cross-references:**
 
 - gtm-agent: `/home/drew/code/gtm-agent/src/lib/.server/agent-profile.ts:78-94`
-  (delegation tools section in `OPERATOR_CEO_SYSTEM_PROMPT`).
+  (delegation tools section in the production system prompt).
 - gtm-agent: `/home/drew/code/gtm-agent/src/lib/.server/sandbox/index.ts:89`
 - ai-trading-blueprint: the original coder-driver MCP pattern that inspired
   the substrate (see `sdk-ts/`).
@@ -684,28 +684,28 @@ export interface DelegationScenario {
 
 export const DELEGATION_SCENARIOS: DelegationScenario[] = [
   {
-    id: 'cpg-founder-retail',
-    personaId: 'cpg-founder',
-    title: 'Direct-to-retail CPG CAC research',
-    userMessage: 'What is typical CAC for direct-to-retail CPG in 2026?',
+    id: 'primary-buyer-research',
+    personaId: 'primary-buyer',
+    title: 'Market benchmark research',
+    userMessage: 'Research current acquisition benchmarks for our target buyer.',
     expectations: [
       { tool: 'delegate_research', expectedCount: 1,
-        argMatchers: ['CAC', 'CPG', '2026'] },
+        argMatchers: ['benchmark', 'acquisition', 'target buyer'] },
     ],
     passThreshold: 0.7,
   },
   {
-    id: 'b2b-pipeline-puller',
-    personaId: 'b2b-saas-founder',
-    title: 'Pipeline scraper tool delegation',
-    userMessage: 'Build a tool that pulls Stripe MRR + Posthog signups.',
+    id: 'technical-evaluator-integration',
+    personaId: 'technical-evaluator',
+    title: 'Integration script delegation',
+    userMessage: 'Build a tool that pulls billing metrics and product signups.',
     expectations: [
       { tool: 'delegate_code', expectedCount: 1,
-        argMatchers: ['stripe', 'posthog'] },
+        argMatchers: ['billing', 'signups'] },
     ],
     passThreshold: 0.7,
   },
-  // ... scenarios for marketing, revops, founder, local-service personas
+  // ... scenarios for buyer, operator, technical, support, and admin personas
 ]
 ```
 
@@ -729,9 +729,9 @@ export async function runDelegationScenario(scenario: DelegationScenario, opts: 
 }
 ```
 
-**Aim for 5-10 scenarios** spanning at least: CPG / B2B SaaS / marketing /
-revops / founder / local-service personas (or product equivalents). One
-scenario per delegation tool kind so coverage is even.
+**Aim for 5-10 scenarios** spanning at least: buyer, operator, technical,
+support, and admin personas (or product equivalents). One scenario per
+delegation tool kind so coverage is even.
 
 **Verify:**
 
@@ -739,7 +739,7 @@ scenario per delegation tool kind so coverage is even.
 pnpm eval:delegation --backend sandbox
 # Expect: per-scenario JSON results under eval/.runs/<runId>/.
 # Composite ≥0.7 on ≥80% of scenarios for a passing run.
-pnpm eval:delegation --persona cpg-founder       # subset
+pnpm eval:delegation --persona primary-buyer     # subset
 pnpm eval:delegation --scenario competitor-dashboard
 ```
 
@@ -808,17 +808,28 @@ import { composeProductionAgentProfile } from '../src/lib/.server/sandbox'
 // Baseline = exact production composer output (eval must equal production)
 export const profileBaseline: AgentProfile = composeProductionAgentProfile()
 
-// Delegation-heavy = same composer + override systemPrompt to push tool use
-export const profileDelegationHeavy: AgentProfile = {
-  ...profileBaseline,
-  systemPrompt: `${profileBaseline.systemPrompt}\n\nIMPORTANT: ALWAYS use delegate_research before answering audience questions. ALWAYS use delegate_code when the user asks for scripts, pipelines, or dashboards.`,
+function withSystemPromptAddendum(profile: AgentProfile, addendum: string): AgentProfile {
+  const base = profile.prompt?.systemPrompt ?? ''
+  return {
+    ...profile,
+    prompt: {
+      ...(profile.prompt ?? {}),
+      systemPrompt: [base, addendum].filter(Boolean).join('\n\n'),
+    },
+  }
 }
 
+// Delegation-heavy = same composer + override systemPrompt to push tool use
+export const profileDelegationHeavy: AgentProfile = withSystemPromptAddendum(
+  profileBaseline,
+  'IMPORTANT: ALWAYS use delegate_research before answering audience questions. ALWAYS use delegate_code when the user asks for scripts, pipelines, or dashboards.',
+)
+
 // Interview-first = mandate 3 interview turns before any artifact
-export const profileInterviewFirst: AgentProfile = {
-  ...profileBaseline,
-  systemPrompt: `${profileBaseline.systemPrompt}\n\nMANDATORY: Spend the first 3 turns interviewing the user about audience, metrics, constraints. Do not produce artifacts until you have these answers.`,
-}
+export const profileInterviewFirst: AgentProfile = withSystemPromptAddendum(
+  profileBaseline,
+  'MANDATORY: Spend the first 3 turns interviewing the user about audience, metrics, constraints. Do not produce artifacts until you have these answers.',
+)
 
 export const PROFILES = {
   baseline: profileBaseline,
@@ -858,8 +869,9 @@ export async function runMultishot(opts: {
 ```ts
 // eval/matrix.ts
 import { runAgentMatrix } from '@tangle-network/agent-eval/matrix'
+import type { AgentProfile } from '@tangle-network/agent-interface'
 import { PROFILES } from './agent-profiles'
-import { PERSONAS } from './personas'
+import { PERSONAS, type Persona } from './personas'
 import { runMultishot } from './multishot'
 import { scoreConversation, scoreCodeArtifacts, scoreContentArtifacts } from './multishot-judges'
 
@@ -871,7 +883,8 @@ const result = await runAgentMatrix({
   reps: 1,
   maxConcurrency: 2,
   costCeiling: 10.0,
-  async runCell(cell, signal) {
+  async runCell(cell) {
+    const started = Date.now()
     const profile = cell.axes.profile.value as AgentProfile
     const persona = cell.axes.persona.value as Persona
     const sim     = await runMultishot({ profile, persona, maxTurns: 10 })
@@ -880,7 +893,12 @@ const result = await runAgentMatrix({
     const codeScore    = await scoreCodeArtifacts(sim.artifacts.filter((a) => a.type === 'code'))
     const contentScore = await scoreContentArtifacts(sim.artifacts.filter((a) => a.type !== 'code'))
     const composite    = (convoScore.composite + codeScore.composite + contentScore.composite) / 3
-    return { score: composite, costUsd: sim.costUsd, output: { transcript: sim.transcript, artifacts: sim.artifacts, scores: { convoScore, codeScore, contentScore } } }
+    return {
+      output: { transcript: sim.transcript, artifacts: sim.artifacts, scores: { convoScore, codeScore, contentScore } },
+      verdict: { valid: composite >= 0.8, score: composite, reason: 'three-judge composite' },
+      costUsd: sim.costUsd,
+      durationMs: Date.now() - started,
+    }
   },
 })
 
@@ -969,7 +987,7 @@ chat handler (HTTP POST /chat)
 **Verify:**
 
 ```bash
-pnpm tsx scripts/smoke-full-loop.ts --message "research CAC for B2B SaaS"
+pnpm tsx scripts/smoke-full-loop.ts --message "research acquisition benchmarks for our target buyer"
 # Expect every line of the trace flow to fire:
 #   [smoke] sandbox created (sandboxId=...)
 #   [smoke] tool_call delegate_research seen
@@ -1261,9 +1279,9 @@ is the WHEN and SEQUENCE; that skill is the HOW and WHY.
 
 ## Key docs
 
-- [`agent-eval-adoption`](../agent-eval-adoption/SKILL.md) — substrate
+- [`agent-eval-adoption`](../../../agent-eval-adoption/skills/agent-eval-adoption/SKILL.md) — substrate
   primitives, traces, judges, scorecard, ship-gate. Pair with this skill.
-- [`agent-eval-adoption/references/current-substrate.md`](../agent-eval-adoption/references/current-substrate.md)
+- [`agent-eval-adoption/references/current-substrate.md`](../../../agent-eval-adoption/skills/agent-eval-adoption/references/current-substrate.md)
   — current package line and removed-symbol checks.
 - `@tangle-network/agent-interface@0.10.x` — the neutral contract beneath the
   stack. Owns `AgentProfile`, `AgentProfileMcpServer`, `HarnessType`,
@@ -1303,7 +1321,7 @@ between products without re-learning the CLI.
 |---|---|---|
 | `eval` | Canonical single-shot persona-driven eval. One scenario or all. | per-product `eval/canonical.ts` or `tests/eval/canonical.ts` |
 | `eval:multishot` | Single multi-turn driver-agent run (debug + iterate before matrix) | `@tangle-network/agent-eval/multishot` |
-| `eval:matrix` | Sweep `AgentProfile[] × persona[] × reps`. The quality dashboard. | `@tangle-network/agent-eval/multishot` `runMultishotMatrix` |
+| `eval:matrix` | Sweep `AgentProfile[] × persona[] × reps`. The quality dashboard. | `@tangle-network/agent-eval/matrix` `runAgentMatrix` |
 | `eval:improve` | Analyst pass — reads production traces → findings | `@tangle-network/agent-eval/analyst` `AnalystRegistry.run` |
 | `eval:calibrate` | Calibrate judge models against gold data | per-product |
 | `eval:optimize` | Mutator generates N candidates + matrix scores them + gate decides | `@tangle-network/agent-eval/campaign` `runOptimization` |
@@ -1348,11 +1366,12 @@ optional infra.
 
 **Files:**
 
-- agent-runtime (0.70.x) exports the OTEL exporter + pipeline wrapper.
-- agent-eval (0.95.x) wraps judge/analyst/mutator LLM calls in spans.
-
-(verify exact OTEL helper names against the installed `@tangle-network/agent-runtime`
-+ `@tangle-network/agent-eval` `.d.ts` — these export-level names have churned.)
+- `@tangle-network/agent-runtime@0.70.x` root exports `createOtelExporter`,
+  `buildLoopOtelSpans`, and `loopEventToOtelSpan`.
+- `@tangle-network/agent-eval@0.95.x` root exports `withOtelPipeline`,
+  `createOtelExporter`, `createOtelTracingStore`, and `isOtelConfigured`.
+- `@tangle-network/agent-eval/adapters/otel` exports `createOtelBridge` for
+  forwarding OpenTelemetry-shaped spans into hosted ingest.
 
 **Code template — enable end-to-end OTEL:**
 

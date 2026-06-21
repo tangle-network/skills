@@ -110,7 +110,9 @@ Minimum surface area in a product repo:
 - `pnpm eval` / equivalent — produces run artifacts + traces.
 - `pnpm eval:improve` / equivalent — turns artifacts into findings + candidate
   prompt/code/knowledge changes.
-- `pnpm eval:optimize` / equivalent — runs the search campaign + holdout gate.
+- `pnpm eval:optimize` / equivalent — runs candidate search only.
+- `pnpm eval:production-loop` / equivalent — runs improve + optimize +
+  held-out gate + optional auto-PR.
 - `.evolve/` (or equivalent) — stores findings, reports, candidate ids, traces,
   promotion decisions.
 
@@ -286,15 +288,15 @@ export function buildDelegationMcpServer(
 ): Record<string, AgentProfileMcpServer> | undefined {
   const sandboxApiKey = options.sandboxApiKey ?? process.env.TANGLE_API_KEY
   if (!sandboxApiKey) return undefined                           // fail closed
+  const env: Record<string, string> = { TANGLE_API_KEY: sandboxApiKey }
+  const sandboxBaseUrl = options.sandboxBaseUrl ?? process.env.SANDBOX_BASE_URL
+  if (sandboxBaseUrl) env.SANDBOX_BASE_URL = sandboxBaseUrl
   return {
     [DELEGATION_MCP_SERVER_KEY]: {
       transport: 'stdio',
       command: 'npx',
       args: ['-y', '@tangle-network/agent-runtime', 'mcp'],     // bin: agent-runtime-mcp
-      env: {
-        TANGLE_API_KEY: sandboxApiKey,
-        SANDBOX_BASE_URL: options.sandboxBaseUrl ?? sandboxBaseUrl(),
-      },
+      env,
       enabled: true,
       metadata: {
         surface: 'delegation:dispatch',
@@ -444,56 +446,75 @@ describe('eval AgentProfile mirrors production', () => {
 ## Cross-profile matrix — `runAgentMatrix`
 
 `@tangle-network/agent-eval/matrix` exports `runAgentMatrix` (the runner is
-shipped, not just the types) plus `MatrixScenario`, `MatrixAxes`, and
-`axisExtractors`. It sweeps scenarios × profiles × replicates and aggregates by
-axis. Use for: cross-provider benchmarking ("does claude-sonnet-4-7 beat
-deepseek-chat on persona X?"), thinking-level ablations, harness selection
-("which coder harness wins on this repo?").
+shipped, not just the types), `MatrixAxis`, `MatrixCell`, `CellResult`,
+`RunAgentMatrixOptions`, `buildByAxis`, and `summariseRows`. It sweeps the
+cartesian product of caller-provided axes × replicates and aggregates by axis.
+Use for: cross-provider benchmarking ("does claude-sonnet-4-7 beat deepseek-chat
+on persona X?"), thinking-level ablations, harness selection ("which coder
+harness wins on this repo?").
 
 ```ts
-import type {
-  MatrixScenario, RunAgentMatrixOptions,
-} from '@tangle-network/agent-eval/matrix'
-import { axisExtractors } from '@tangle-network/agent-eval/matrix'
+import { runAgentMatrix, type MatrixAxis, type RunAgentMatrixOptions } from '@tangle-network/agent-eval/matrix'
+import type { AgentProfile } from '@tangle-network/agent-interface'
 
-const result = await runAgentMatrix({
-  scenarios,                               // MatrixScenario<Task>[]
-  profiles: [claudeProfile, codexProfile], // AgentProfile[] from @tangle-network/agent-interface
-  runCell: async (cell, signal) => {
-    // cell carries { scenario, profile, repIndex, axes }. You spawn the
-    // sandbox, drive the loop, score, return { score, costUsd, output? }.
-    const loopResult = await runLoop({ task: cell.scenario.task, agentRuns: [{ profile: cell.profile, harness: cell.axes.harness }], output, validator, driver, ctx: { sandboxClient, signal } })
-    return { score: loopResult.winner?.verdict.score ?? 0, costUsd: loopResult.costUsd, output: loopResult.winner?.output }
-  },
-  axes: {
-    harness: axisExtractors.harness,            // built-in
-    model: axisExtractors.model,
-    thinkingLevel: axisExtractors.thinkingLevel,
-    persona: (profile) => profile.metadata?.persona as string | undefined,
+type TaskScenario = { id: string; task: unknown }
+
+const axes: MatrixAxis<unknown>[] = [
+  { name: 'scenario', values: scenarios.map((scenario) => ({ id: scenario.id, value: scenario })) },
+  { name: 'profile', values: [claudeProfile, codexProfile].map((profile: AgentProfile) => ({ id: profile.name ?? profile.model?.default ?? 'profile', value: profile })) },
+  { name: 'harness', values: ['opencode', 'codex'].map((harness) => ({ id: harness, value: harness })) },
+]
+
+const options: RunAgentMatrixOptions<unknown> = {
+  axes,
+  async runCell(cell) {
+    const scenario = cell.axes.scenario.value as TaskScenario
+    const profile = cell.axes.profile.value as AgentProfile
+    const harness = cell.axes.harness.value as string
+    const started = Date.now()
+    const loopResult = await runLoop({
+      task: scenario.task,
+      agentRuns: [{ profile, harness }],
+      output,
+      validator,
+      driver,
+      ctx: { sandboxClient },
+    })
+    const verdict = loopResult.winner?.verdict ?? { valid: false, score: 0, reason: 'no valid winner' }
+    return {
+      output: loopResult.winner?.output,
+      verdict,
+      costUsd: loopResult.costUsd ?? 0,
+      durationMs: Date.now() - started,
+    }
   },
   reps: 3,
   maxConcurrency: 4,
   costCeiling: 5.0,                          // abort cleanly when cumulative cost crosses $5
-})
+}
+
+const result = await runAgentMatrix(options)
 ```
 
 ### Aggregation
 
-`result.byAxis` carries `AxisSummary[]` per axis (passRate, meanScore,
-totalCostUsd, sampleSize). `result.summary` carries totals +
-`costCeilingReached` + `aborted` + `skippedCells`. Use these for the
-public benchmark dashboard; do NOT recompute by hand from `cells[]` —
-the substrate's aggregator already handles `skipped` correctly.
+`result.byAxis[axisName][axisValueId]` carries `AxisSummary` rows (passRate,
+meanScore, p50Score, p90Score, totalCostUsd, meanDurationMs). `result.summary`
+carries `totalCells`, `runsExecuted`, `cellsSkipped`, overall pass/score, total
+cost, and duration. Use these for the public benchmark dashboard; do NOT
+recompute by hand from `cells[]` — the substrate's aggregator already handles
+skipped cells correctly.
 
 ### Gotchas
 
 - `runCell` may throw; the matrix captures throws as `CellResult.error`
   WITHOUT aborting the rest of the run. Partial completion is observable
-  via `summary.skippedCells`.
+  via `summary.cellsSkipped`.
 - `costCeiling` is a soft abort — in-flight cells finish; new ones don't
   start. Set it conservatively for paid-backend matrices.
-- `signal` propagates a child `AbortSignal` into your `runCell`; honour
-  it or the matrix can't abort cleanly.
+- The top-level `signal` option stops scheduling new cells. In 0.95.1
+  `runCell` receives only the `MatrixCell`; do not write examples that expect a
+  second `signal` argument.
 
 ## Live trace flow — the production-to-evolution pipeline
 
@@ -650,7 +671,8 @@ import {
 } from '@tangle-network/agent-runtime/loops'
 
 export function ownedLoopTraceSource(runId: string) {
-  return createPushTraceSource({ runId })
+  const { source, record } = createPushTraceSource({ runId })
+  return { source, record }
 }
 
 export function sandboxTraceSource(
@@ -662,9 +684,10 @@ export function sandboxTraceSource(
 }
 ```
 
-Owned loops call `record(...)` on the returned push source as tools execute.
-Sandbox or fleet runs collect spans from session parts at settle time. The
-same persisted span stream feeds analyst findings and the improvement loop.
+Owned loops call `record(...)` on the returned push-source handle as tools
+execute, and pass `source` to downstream collectors. Sandbox or fleet runs
+collect spans from session parts at settle time. The same persisted span stream
+feeds analyst findings and the improvement loop.
 
 ### Gotchas
 
@@ -812,7 +835,7 @@ Same shape in `tax-agent/tests/eval/lib/scorecard-integration.ts`,
 - Reference PRs: `creative-agent#145`, `tax-agent#90`, `gtm-agent#144`,
   `legal-agent#97`.
 
-## 6. Per-run `AgentProfileCell` — `buildAgentProfileCell` / `buildSandboxAgentProfileCell`
+## 6. Per-run `AgentProfileCell` — `buildAgentProfileCell` / `buildAgentInterfaceProfileCell`
 
 Coexists with the scorecard profile; do not conflate them. The scorecard's
 `AgentProfile` is the behaviour-only key whose hash is stable across runs.
@@ -824,26 +847,49 @@ fact.
 `creative-agent/eval/agent-profile-cell.ts:1`:
 
 ```ts
-import { buildAgentProfileCell, type AgentProfileCell, type AgentProfileJson } from '@tangle-network/agent-eval'
+import {
+  AGENT_PROFILE_KINDS,
+  buildAgentInterfaceProfileCell,
+  buildAgentProfileCell,
+  toAgentProfileJson,
+  type AgentProfileCell,
+} from '@tangle-network/agent-eval'
 
 export async function buildCreativeAgentProfileCell(args: {
   harnessVersion: string; model: string; promptHash: string;
   backend: string; personaSuite: string;
 }): Promise<AgentProfileCell> {
-  return buildAgentProfileCell({
-    profileId:     `${creativeAgentProfile.name}@${creativeAgentProfile.version}`,
-    sourceProfile: { kind: 'sandbox-agent-profile', profile: toAgentProfileJson(creativeAgentProfile) },
+  return buildAgentInterfaceProfileCell(creativeAgentProfile, {
     harness:       { id: 'creative-agent-canonical-eval', version: args.harnessVersion },
     model: args.model, promptHash: args.promptHash,
     dimensions:    { backend: args.backend, personaSuite: args.personaSuite },
   })
 }
+
+export async function buildAdvancedProfileCell(args: {
+  harnessVersion: string; model: string; promptHash: string;
+  backend: string; personaSuite: string;
+}): Promise<AgentProfileCell> {
+  return buildAgentProfileCell({
+    profileId: `${creativeAgentProfile.name}@${creativeAgentProfile.version}`,
+    sourceProfile: {
+      kind: AGENT_PROFILE_KINDS.AGENT_INTERFACE_PROFILE,
+      profile: toAgentProfileJson(creativeAgentProfile),
+    },
+    harness: { id: 'creative-agent-canonical-eval', version: args.harnessVersion },
+    model: args.model,
+    promptHash: args.promptHash,
+    dimensions: { backend: args.backend, personaSuite: args.personaSuite },
+  })
+}
 ```
 
-For products consuming a sandbox-SDK `AgentProfile` directly, use the
-short-circuit `buildSandboxAgentProfileCell(profile, { harness, model,
-promptHash, dimensions })` (`agent-eval/src/agent-profile-cell.ts:434`) — it
-hard-codes the `sandbox-agent-profile` kind and the JSON canonicalization.
+For products consuming an `@tangle-network/agent-interface` `AgentProfile`
+directly, prefer `buildAgentInterfaceProfileCell(profile, { harness, model,
+promptHash, dimensions })`. It hard-codes
+`AGENT_PROFILE_KINDS.AGENT_INTERFACE_PROFILE` (`'agent-interface-profile'`) and
+the JSON canonicalization. Use manual `buildAgentProfileCell` only for advanced
+cases such as precomputed source hashes or custom profile-id conventions.
 
 ### Gotchas
 
@@ -864,12 +910,22 @@ Skeleton:
 
 ```ts
 import {
+  defaultProductionGate,
   runImprovementLoop,
   type MutableSurface,
   type RunImprovementLoopResult,
   type Scenario,
 } from '@tangle-network/agent-eval/campaign'
 
+const gate = defaultProductionGate<Artifact, Scenario>({
+  holdoutScenarios,
+  deltaThreshold: 0.03,
+  minProductiveRuns: 3,
+  criticalDimensions: ['hallucination_free'],
+  budgetUsd: 25,
+})
+
+// Function generics are <Scenario, Artifact>; result generics are <Artifact, Scenario>.
 const result: RunImprovementLoopResult<Artifact, Scenario> =
   await runImprovementLoop<Scenario, Artifact>({
     runId,
@@ -897,9 +953,9 @@ promotion.
 
 ### Gotchas
 
-- **The gate fails closed.** `pairedDeltaThreshold` + `overfitGapThreshold`
-  + `minProductiveRuns` must all be satisfied. A "promote when better than
-  baseline" without these is a regression vector.
+- **The gate fails closed.** `deltaThreshold`, `minProductiveRuns`,
+  `criticalDimensions`, budget, and reward-hacking checks must all pass. A
+  "promote when better than baseline" rule without these is a regression vector.
 - **Static skills are not loop-owned.** The loop rewrites a single
   `prompt-addendum.ts` only. Skills under `agent-prompt/skills/` are
   human-curated.
@@ -914,7 +970,7 @@ promotion.
 
 When you need to compare multiple candidate variants over the same scenarios
 with paired statistics, use `runEvalCampaign`
-(`agent-eval/src/eval-campaign.ts:298`). Single-variant nightly runs do not
+from `@tangle-network/agent-eval`. Single-variant nightly runs do not
 need it — they emit single-variant `analyzeOptimizationResult` derivatives
 straight from the canonical runner.
 
@@ -1118,7 +1174,8 @@ file-for-file: `creative-agent`, `tax-agent`, `legal-agent`, `gtm-agent`.
 - `@tangle-network/agent-eval@0.95.x` README
 - `@tangle-network/agent-eval/docs/wire-protocol.md`
 - `@tangle-network/agent-eval/matrix` — `runAgentMatrix` (shipped),
-  `MatrixScenario`, `MatrixAxes`, `axisExtractors`
+  `MatrixAxis`, `MatrixCell`, `CellResult`, `RunAgentMatrixOptions`,
+  `buildByAxis`, `summariseRows`
 - `@tangle-network/agent-eval/campaign` — `runImprovementLoop`,
   `runOptimization`, `Scenario`, `MutableSurface`
 - `@tangle-network/agent-runtime@0.70.x/loops` — `runAgentic`, `runLoop`,
