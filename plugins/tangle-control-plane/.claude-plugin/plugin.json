@@ -1,0 +1,8 @@
+{
+  "name": "tangle-control-plane",
+  "description": "Connect this agent to your Tangle account over MCP — discover and invoke connected integrations (Gmail, GitHub, Slack, …) and author, run, and observe workflows. Bundles the control-plane MCP server plus a thin skill that teaches the discover→invoke and author→run→observe loops.",
+  "author": {
+    "name": "Tangle Network",
+    "email": "hello@tangle.tools"
+  }
+}

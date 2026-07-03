@@ -41,6 +41,7 @@ Or browse and install:
 | [tangle-blueprint-iframe-app](./plugins/tangle-blueprint-iframe-app/) | Build hosted blueprint product UIs that embed safely in Tangle Cloud with iframe mode, parent-bridged wallet flows, manifests, and frame headers |
 | [tangle-blueprint-innovate](./plugins/tangle-blueprint-innovate/) | Turn blueprint ideas, categories, or half-built repos into research-grounded, multi-operator specs ready for execution |
 | [tangle-branded-designer](./plugins/tangle-branded-designer/) | Tangle brand design system and visual guidelines |
+| [tangle-control-plane](./plugins/tangle-control-plane/) | Connect Claude Code to your Tangle account over MCP -- invoke connected integrations (Gmail/GitHub/Slack) and author, run, and observe workflows, with a skill that teaches the tool loops |
 
 For internal skills (sidecar internals, provider architecture), see [tangle-network/skills-internal](https://github.com/tangle-network/skills-internal) (private).
 
