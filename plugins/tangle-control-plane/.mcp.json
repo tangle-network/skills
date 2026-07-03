@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "tangle-control-plane": {
+      "type": "http",
+      "url": "${TANGLE_HUB_URL:-https://id.tangle.tools}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${TANGLE_API_KEY}"
+      }
+    }
+  }
+}

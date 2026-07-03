@@ -216,6 +216,22 @@
         "brand",
         "ui"
       ]
+    },
+    {
+      "name": "tangle-control-plane",
+      "source": "./plugins/tangle-control-plane",
+      "description": "Connect this agent to your Tangle account over MCP — discover and invoke connected integrations (Gmail, GitHub, Slack, …) and author, run, and observe workflows. Bundles the control-plane MCP server plus a thin skill that teaches the discover→invoke and author→run→observe loops.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "mcp",
+        "integrations",
+        "workflows",
+        "control-plane",
+        "automation"
+      ]
     }
   ]
 }
