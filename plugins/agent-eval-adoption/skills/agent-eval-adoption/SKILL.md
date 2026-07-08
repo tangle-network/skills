@@ -1193,3 +1193,11 @@ file-for-file: `creative-agent`, `tax-agent`, `legal-agent`, `gtm-agent`.
   `createSurfaceImprovementAdapter`, `createSurfaceKnowledgeAdapter`
 - `@tangle-network/agent-knowledge@1.7.x` — `proposeFromFindings`,
   `applyKnowledgeWriteBlocks`, optional `multiHarnessResearcherFanout`
+
+## Causal Gate (neutralizationGate)
+
+Standard gates prove a candidate *beat baseline*; they do not prove the candidate's *content* caused the lift rather than the extra prompt bytes. `neutralizationGate` (agent-eval 0.107.0+, `neutralizeText` in `src/campaign/neutralize.ts`) is the placebo control: blank the candidate's added content to byte-length-matched filler, hold everything else fixed, and require the lift to vanish. If a fully-neutralized candidate still scores, the content was decorative — reject it. Wire it into any improvement/ship loop that promotes authored artifacts (prompts, tool docs, knowledge), not just tuning. Pairs with `heldOutGate`.
+
+## Carrier Matters (small models)
+
+Where the knowledge is delivered dominates whether a small model uses it. Measured (crit-create/EOPS, deepseek-v4-flash): the SAME authored fix scores 0.00 as a mounted `resources.files` doc the model never opens, versus 0.625 delivered on the tool/function schema in tools-list (+0.54 over 0.083 baseline; deliberately-wrong content collapses to 0.25, proving content-causality). For small models prefer the tool/mcp schema carrier over `resources.files`; make carrier an explicit choice, and use `neutralizationGate` to prove the authored content — not its mere presence — carried the result.
