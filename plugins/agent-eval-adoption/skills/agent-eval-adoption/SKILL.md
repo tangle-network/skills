@@ -1,11 +1,9 @@
 ---
 name: agent-eval-adoption
-description: "Substrate-primitive reference for adopting the current Tangle agent stack in a product. Covers defineAgent manifest, runLoop driven loops, TraceSource capture, scorecard + ship-gate CI, held-out promotion via runImprovementLoop, cross-profile matrix benchmarks, analyst-loop, and assertRealBackend Phase A guard. Before copying version or API names, run scripts/check-substrate-versions.sh and read references/current-substrate.md. PAIRS WITH: agent-stack-adoption (9-phase pipeline shape that consumes these primitives), agent-eval (substrate footgun bible + canonical product-agent file layout), eval-agent (LLM-as-judge rubric generation specifically)."
+description: "Substrate-primitive reference for adopting the current Tangle agent stack in a product. Covers defineLeaderboard product-leaderboard authoring, the two backend resolvers (resolveSandboxClient / resolveAgentBackend), streamAgentTurn run-turn streaming, defineAgent manifest, runLoop driven loops, TraceSource capture, scorecard + ship-gate CI, held-out promotion via runImprovementLoop, cross-profile matrix benchmarks, analyst-loop, and assertRealBackend Phase A guard. Before copying version or API names, run scripts/check-substrate-versions.sh and read references/current-substrate.md. PAIRS WITH: agent-stack-adoption (9-phase pipeline shape that consumes these primitives), agent-eval (substrate footgun bible + canonical product-agent file layout), eval-agent (LLM-as-judge rubric generation specifically)."
 ---
 
 # Agent Eval Adoption — substrate primitives for product wiring
-
-> **Versions move fast — run `scripts/check-substrate-versions.sh` before copying any version pin below.** npm is the source of truth and the script fails closed when a pin here falls behind it (agent-eval shipped a breaking 0.94 the same week 0.95 landed). A minor bump can rename or move an export, so re-verify API names against the new dist whenever the script flags drift.
 
 ## Related skills — what to read when
 
@@ -14,32 +12,47 @@ description: "Substrate-primitive reference for adopting the current Tangle agen
 | Working IN the agent-eval substrate repo, calling its primitives correctly, OR setting up the canonical `eval/` folder + 3 pnpm scripts in a product | `agent-eval` (project skill, auto-loaded in agent-eval repo) |
 | Wiring the full 4-package stack end-to-end across 9 phases (single composer → ingestion → production-loop → MCP delegation → researcher → eval scenarios → viewer → matrix → live smoke → CI cron) | `agent-stack-adoption` — the pipeline shape that consumes the primitives THIS skill defines |
 | Building an LLM-as-judge with rubrics generated from reference material | `eval-agent` — narrower, judge-component focused |
-| Looking up specific substrate primitives (defineAgent, runLoop, MCP delegation, TraceSource, assertRealBackend, scorecard, analyst-loop, runAgentMatrix) for adoption | **THIS skill** |
+| Looking up specific substrate primitives (defineLeaderboard, resolveSandboxClient/resolveAgentBackend, streamAgentTurn, defineAgent, runLoop, MCP delegation, TraceSource, assertRealBackend, scorecard, analyst-loop, runAgentMatrix) for adoption | **THIS skill** |
 
 Use this skill when wiring `@tangle-network/agent-eval` into a product repo, or
 when reviewing such a wiring. It encodes the canonical shape shipped across the
 vertical agents (`creative-agent`, `tax-agent`, `legal-agent`, `gtm-agent`,
 `agent-builder`, `physim`) and the substrate.
 
-- **Current package truth lives in
-  `references/current-substrate.md`; re-run `scripts/check-substrate-versions.sh`
-  before changing versions.**
-- **`@tangle-network/agent-interface` (0.10.x)** — the NEUTRAL contract / single
+- **Package versions live in ONE place — `references/current-substrate.md`.
+  The prose below names packages and subpaths, not point versions; re-run
+  `scripts/check-substrate-versions.sh` and update that table before changing a
+  pin.**
+- **`@tangle-network/agent-interface`** — the NEUTRAL contract / single
   source of truth. Owns `AgentProfile`, `AgentProfileMcpServer`, `HarnessType`,
   `ReasoningEffort`, `Part` / `ToolPart` / `ToolState`, and the capability layer
   (`harnessSupportsModel`, `reasoningEffortsFor`). Every other package normalizes
   into these types; `@tangle-network/sandbox` re-exports them for back-compat.
-- **`@tangle-network/agent-runtime` (0.70.x)** — the loop kernel, drivers,
-  profile data, MCP delegation server, `defineAgent`, surface adapters, and
-  `TraceSource` family.
-- **`@tangle-network/agent-eval` (0.95.x)** — scorecard, ship-gate, analyst loop,
-  held-out gate, matrix, backend-integrity guard, `runOptimization`, and
-  `runImprovementLoop`.
-- **`@tangle-network/agent-profile-materialize` (0.1.0)** — the shared per-harness
+  The neutral `AgentProfile` has NO top-level `harness` field — harness is a
+  run-layer / executor coordinate, not a profile field.
+- **`@tangle-network/agent-runtime`** — the loop kernel, drivers,
+  profile data, MCP delegation server, `defineAgent`, surface adapters, the
+  `TraceSource` family, `defineLeaderboard` (the product-leaderboard facade),
+  `resolveSandboxClient` / `resolveAgentBackend` (the two backend resolvers),
+  `streamAgentTurn` / `collectAgentTurn` (the one run-turn event contract), and
+  `improve` (the one pluggable RSI verb — a facade over agent-eval's
+  `selfImprove`).
+- **`@tangle-network/agent-eval`** — scorecard, backend-integrity guard, analyst
+  loop, matrix, and the campaign machinery. `/contract` is the frozen public
+  barrel (`defineAgentEval`, `selfImprove`, `runEval`, `runCampaign`,
+  `runImprovementLoop`, the `defaultProductionGate` / `heldOutGate` promotion
+  gate, `analyzeRuns`, storage + `OutcomeStore` + intake adapters); `/campaign`
+  adds the composable internals (`heldoutSignificance`, `pairHoldout`,
+  `powerPreflight`, the Lineage DAG, `scoreDiscrimination` /
+  `selectDiscriminative`); the root owns the harness × model eval axis
+  (`CODING_HARNESSES`, `expandProfileAxes`, `runProfileMatrix`,
+  `groupRunsByAgentProfileCell`, `HARNESS_NATIVE_MODEL`) and the multishot
+  transport seam (`MultishotTransport` — `agentTransport` / `driverTransport`).
+- **`@tangle-network/agent-profile-materialize`** — the shared per-harness
   materializer (`materializeProfile` / `WorkspacePlan` / `applyWorkspacePlan`)
   that turns one `AgentProfile` into a concrete harness workspace.
-- **`@tangle-network/agent-knowledge` (1.7.x)** — optional peer: knowledge writes
-  + researcher fanout.
+- **`@tangle-network/agent-knowledge`** — optional companion package
+  (not a runtime peer): knowledge writes + researcher fanout.
 
 ### Capability layer — model/effort negotiation
 
@@ -96,10 +109,11 @@ verify the whole campaign loop — the 9 patterns below are that loop:
    (`runImprovementLoop` wraps the held-out promotion shell).
 5. Apply each candidate in an isolated git worktree or branch, never in-place
    against unrelated user work — `createSurfaceImprovementAdapter`.
-6. Rerun train/dev/holdout through the same product adapter. The holdout gate
-   decides promotion; LLM judges cannot override deterministic failures, build
-   failures, runtime failures, or missing credentials — pattern 7
-   (`HeldOutGate` + `runImprovementLoop`).
+6. Rerun train/dev/holdout through the same product adapter. The held-out
+   promotion gate (`defaultProductionGate` / `heldOutGate`) decides promotion on
+   the MEAN paired delta; LLM judges cannot override deterministic failures,
+   build failures, runtime failures, or missing credentials — pattern 7
+   (the gate + `runImprovementLoop`).
 7. Promote via reviewable PR or a clearly-named local candidate only when the
    gate passes. Persist the report, traces, candidate diff, release-confidence
    summary — pattern 9 (CI workflow integration).
@@ -110,9 +124,7 @@ Minimum surface area in a product repo:
 - `pnpm eval` / equivalent — produces run artifacts + traces.
 - `pnpm eval:improve` / equivalent — turns artifacts into findings + candidate
   prompt/code/knowledge changes.
-- `pnpm eval:optimize` / equivalent — runs candidate search only.
-- `pnpm eval:production-loop` / equivalent — runs improve + optimize +
-  held-out gate + optional auto-PR.
+- `pnpm eval:optimize` / equivalent — runs the search campaign + holdout gate.
 - `.evolve/` (or equivalent) — stores findings, reports, candidate ids, traces,
   promotion decisions.
 
@@ -146,19 +158,19 @@ const result = await runAgentic({
 
 ### Foundational primitives — there is no "coder" role, only a profile + a gate
 
-The mental model that the old `coderProfile()` factory / `createCoderValidator`
-implied is GONE. The §1.5 law applies: you do not instantiate a "coder agent" —
+The §1.5 law applies: you do not instantiate a "coder agent" —
 you **author an `AgentProfile`**, run it (often via a worktree-CLI executor) to
 get a raw `WorktreePatchArtifact`, and **gate** the artifact with a
 `DeliverableSpec`. Concretely:
 
-- **`coderProfile`** (`@tangle-network/agent-runtime/profiles`) — now an
-  `AgentProfile` *constant* (no longer a factory), the author-the-profile DATA
-  for code-modification tasks. Harness is chosen at run time, not baked into the
-  profile. Pair it with `DEFAULT_CODER_SYSTEM_PROMPT` / `coderTaskToPrompt` from
-  the same subpath.
+- **`CoderTask` / `coderTaskToPrompt(task)`**
+  (`@tangle-network/agent-runtime/profiles`) — the typed code-modification task
+  shape plus its pure task-to-prompt formatter. There is no shipped coder
+  `AgentProfile`; you author the profile (systemPrompt + model) yourself and
+  choose the harness at run time.
 - **`createWorktreeCliExecutor(options)`** — the executor that runs a profile in
-  an isolated git worktree and returns a raw `WorktreePatchArtifact`.
+  an isolated git worktree and returns a raw `WorktreePatchArtifact`. Requires
+  `repoRoot`, `harness`, `taskPrompt`, and the authored `profile`.
 - **`gateOnDeliverable(inner, deliverable)`** — wraps any `Executor` so its
   artifact must pass a `DeliverableSpec` (a plain `check(artifact) => boolean`)
   to count as delivered. The selector is never a judge.
@@ -179,21 +191,25 @@ get a raw `WorktreePatchArtifact`, and **gate** the artifact with a
 import {
   createWorktreeCliExecutor, gateOnDeliverable, patchDelivered, worktreeFanout,
 } from '@tangle-network/agent-runtime/loops'
-import { coderProfile } from '@tangle-network/agent-runtime/profiles'
+import { coderTaskToPrompt } from '@tangle-network/agent-runtime/profiles'
 
 const executor = gateOnDeliverable(
-  createWorktreeCliExecutor({ profile: coderProfile, harness: 'claude-code', task }),
+  createWorktreeCliExecutor({
+    repoRoot,
+    profile,                               // the AgentProfile YOU author (systemPrompt + model)
+    harness: 'claude-code',
+    taskPrompt: coderTaskToPrompt(task),
+  }),
   patchDelivered({ maxDiffLines: 400 }),   // the deliverable IS the gate, passed as DATA
 )
 ```
 
-The **researcher** primitive is NOT a shipped profile preset. It's a
-`ResearcherDelegate` interface (`src/mcp/delegates.ts`) consumers wire against
-their own retrieval / corpus loop. The MCP server's `delegate_research`
-forwards to whatever `ResearcherDelegate` you inject at `createMcpServer`
-construction. The optional `@tangle-network/agent-knowledge` peer ships a
-`multiHarnessResearcherFanout` consumers can adapt; the bin (`agent-runtime-mcp`)
-auto-wires it when the peer is installed.
+There is no **researcher** primitive either — no researcher profile preset and
+no researcher delegate interface. Research delegation rides the same generic
+`delegate` MCP verb: the supervisor authors a researcher-shaped worker from the
+intent ("research competitor pricing with citations"). For an owned
+retrieval / corpus loop, the optional `@tangle-network/agent-knowledge` package
+ships a `multiHarnessResearcherFanout` consumers can adapt directly.
 
 ### Topologies — built-in strategies + shipped combinators
 
@@ -229,45 +245,72 @@ NOT vendor a forked kernel.
 - The output adapter MUST return a typed value or throw. A `null` /
   `undefined` adapter return silently drops the iteration from scoring.
 
+## Backends — two execution models, two resolvers (never hand-roll a factory)
+
+`@tangle-network/agent-runtime` ships exactly two backend resolvers. Pick by
+execution model; NEVER write a per-product backend factory or fake a box
+around a non-box executor — the substrate already has the pieces
+(`inlineSandboxClient`, the bridge executor) wired behind these:
+
+- **Harness-in-box** (the agent runs inside a sandboxed harness) →
+  `resolveSandboxClient({ backend: 'sandbox' | 'bridge' | 'router', ... })`
+  from `/loops`. `'sandbox'` returns the caller's real Sandbox-backed client;
+  `'bridge'` fronts a local cli-bridge harness CLI; `'router'` uses a router
+  chat-completion as the leaf executor. All three return the SAME
+  `SandboxClient` shape, so loop code is backend-agnostic.
+- **In-process agent** (the product's own chat path, no box) →
+  `resolveAgentBackend({ kind: 'router' | 'tcloud' | 'cli-bridge' | 'sandbox', ... })`
+  from the package root — the one `--backend` branch for
+  `runChatThroughRuntime` / `runAgentTaskStream`. Pure backend selection;
+  product concerns (credit cuts, retries) wrap the returned backend.
+
+**Run-turn streaming:** `streamAgentTurn(backend, prompt, { signal, timeoutMs })`
++ `collectAgentTurn(stream)` (`/loops`) run ONE agent turn on any
+substrate — box, cli-bridge/router executor, or in-process chat backend — as
+one normalized `RuntimeStreamEvent` stream with a guaranteed terminal
+result+usage event. Do not write a per-provider stream→event mapper.
+
 ## MCP delegation tools — `@tangle-network/agent-runtime/mcp`
 
-The substrate ships an in-process or stdio MCP server that exposes
-the five delegation tools to any agent harness that can mount MCP servers
-(Claude Code, Codex, etc.). The server is profile-agnostic: it takes a
-`CoderDelegate` and (optionally) a `ResearcherDelegate` you compose against
-your sandbox client + loop topology.
+The substrate ships an in-process or stdio MCP server (`createMcpServer`, bin
+`agent-runtime-mcp`) that exposes the delegation tools to any agent harness
+that can mount MCP servers (Claude Code, Codex, etc.). The surface is ONE
+generic `delegate` verb plus the queue-bound tools (`delegate_feedback`,
+`delegation_status`, `delegation_history`); the queue-bound trio is always
+served, `delegate` is opt-in. `delegate_ui_audit` is served only when a
+consumer wires a `UiAuditorDelegate` at `createMcpServer` construction (the
+bin does not wire one).
 
-### The five tools
+### The tools
 
 Names, descriptions, and input schemas are exported verbatim from the
 substrate. Use them in product system prompts unedited so the model receives
 the same surface in prod and eval.
 
-- **`delegate_code`** — "Delegate a coding task to specialist coder agents
-  that produce a validated patch. ... Returns immediately with a taskId.
-  Poll delegation_status to retrieve the patch + validator verdict
-  (typically minutes-to-hours...). Identical inputs return the same taskId —
-  safe to retry. When variants > 1, multiple coder harnesses (claude-code,
-  codex, opencode) attempt the task in parallel and the highest-scoring
-  patch wins (smallest passing diff)."
-- **`delegate_research`** — "Delegate a research question to specialist
-  researcher agents that produce source-grounded, evidence-bearing
-  knowledge items. ... Returns immediately with a taskId. ... When variants
-  > 1, multiple researcher harnesses run in parallel and the highest-scoring
-  valid output wins (citation density × source diversity × recency match ×
-  gap coverage). ... Multi-tenant isolation: every item carries `namespace`.
-  The validator hard-fails when any item is scoped outside `namespace`.
-  Never pass another tenant's namespace."
+- **`delegate`** — "Delegate an INTENT to a supervisor that AUTHORS and
+  drives whatever worker the intent needs. ... There is no fixed worker
+  type: this ONE verb replaces separate code / research delegation. The
+  supervisor picks the worker shape from your intent. ... Returns
+  synchronously with the delivered result AND the real cost of the whole
+  delegation (spentTotal: iterations, input/output tokens, usd, ms) ... A
+  run that produced no delivered worker returns status \"no-winner\" with
+  the reason; it never fabricates a success." Input is `intent` plus an
+  optional per-call `model` / `runId`. The supervisor's substrate (its brain
+  `router`, the worker `backend`, the completion `deliverable`) is INJECTED
+  at server construction — never an agent-supplied arg.
 - **`delegation_status`** — "Poll the status of an async delegation. ...
+  Pass includeTrace: true to also receive the journaled loop-trace span
+  tree (loop → round → iteration, with placement/cost/verdict metadata). ...
   Throws NotFoundError when taskId is unknown — never silently returns
   `pending` for a typo."
 - **`delegation_history`** — "Read past delegations newest-first. ...
   Filters: `namespace` (multi-tenant scope), `profile` (\"coder\" |
-  \"researcher\"), `since` (ISO date). `limit` defaults to 50, capped at 500."
+  \"researcher\"), `since` (ISO date). `limit` defaults to 50, capped at
+  500." Each entry carries `hasTrace`; when true, the full span tree is
+  retrievable via `delegation_status { taskId, includeTrace: true }`.
 - **`delegate_feedback`** — "Record feedback on a delegation, artifact, or
   outcome. Synchronous — the event is durably stored when this call returns.
-  ... `refersTo.kind`: \"delegation\" | \"artifact\" | \"outcome\". `by`:
-  \"agent\" | \"user\" | \"downstream-judge\"."
+  ... `refersTo.kind`: \"delegation\" | \"artifact\" | \"outcome\"."
 
 ### Mounting pattern — production AgentProfile.mcp
 
@@ -288,19 +331,20 @@ export function buildDelegationMcpServer(
 ): Record<string, AgentProfileMcpServer> | undefined {
   const sandboxApiKey = options.sandboxApiKey ?? process.env.TANGLE_API_KEY
   if (!sandboxApiKey) return undefined                           // fail closed
-  const env: Record<string, string> = { TANGLE_API_KEY: sandboxApiKey }
-  const sandboxBaseUrl = options.sandboxBaseUrl ?? process.env.SANDBOX_BASE_URL
-  if (sandboxBaseUrl) env.SANDBOX_BASE_URL = sandboxBaseUrl
   return {
     [DELEGATION_MCP_SERVER_KEY]: {
       transport: 'stdio',
       command: 'npx',
-      args: ['-y', '@tangle-network/agent-runtime', 'mcp'],     // bin: agent-runtime-mcp
-      env,
+      args: ['-y', '--package', '@tangle-network/agent-runtime', 'agent-runtime-mcp'],
+      env: {
+        TANGLE_API_KEY: sandboxApiKey,
+        SANDBOX_BASE_URL: options.sandboxBaseUrl ?? sandboxBaseUrl(),
+        MCP_ENABLE_DELEGATE: '1',          // serve the generic `delegate` verb
+      },
       enabled: true,
       metadata: {
         surface: 'delegation:dispatch',
-        tools: ['delegate_code', 'delegate_research', 'delegate_feedback',
+        tools: ['delegate', 'delegate_feedback',
                 'delegation_status', 'delegation_history'],
       },
     },
@@ -313,52 +357,74 @@ Then merge into the per-turn `streamPrompt` profile (see
 
 ### `TANGLE_API_KEY` — scope matters
 
-The MCP server requires a `TANGLE_API_KEY` that can drive `new Sandbox({ apiKey })`.
+Serving `delegate` requires a `TANGLE_API_KEY` that can drive
+`new Sandbox({ apiKey })` — the authored workers run as sub-sandboxes through
+that client. The queue-bound trio (feedback / status / history) serves with
+no key.
 
-- **`sk_sb_*`** — sandbox-scoped key. Can spawn sibling sandboxes and run
-  delegations against the sandbox executor. Default for free-tier sandbox
-  consumers. Cannot drive the paid router.
-- **`orch_prod_*`** — orchestrator/production key. Drives both sandbox AND
-  the paid router. Use for production worker secrets.
+`TANGLE_API_KEY` is the ONE all-products key (`sk-tan-…`): it drives the
+sandbox AND the paid router. Do not mint or special-case per-scope keys.
 
-Set `AGENT_RUNTIME_MCP_ALLOW_NO_KEY=1` ONLY for the queue-only diagnostic
-subset (feedback / status / history). The bin exits 2 with a clear message
-when neither the key nor the opt-in is set.
+When `MCP_ENABLE_DELEGATE=1` is set without a key, the bin exits 2 with a
+clear message. `AGENT_RUNTIME_MCP_ALLOW_NO_KEY=1` overrides that exit for
+diagnostics only.
 
-### Sibling vs fleet mode — `TANGLE_FLEET_ID`
+### Worker placement — sibling sub-sandboxes vs fleet workspace
 
-- **Sibling mode (default)** — `createSiblingSandboxExecutor`. Each
-  delegation spawns a new sandbox alongside the caller's. Worker patches
+The bin's `delegate` workers run as sub-sandboxes (the `sandbox` backend)
+through the SAME `SandboxClient` the bin loads from `TANGLE_API_KEY`, on the
+harness named by `MCP_DELEGATE_WORKER_HARNESS`. For consumers wiring the
+queue-bound delegation plumbing themselves (`createMcpServer` +
+`detachedSessionDelegate`), placement is a library-level choice exported from
+`@tangle-network/agent-runtime/mcp`:
+
+- **`createSiblingSandboxExecutor`** (the `detachedSessionDelegate` default) —
+  each delegation spawns a new sandbox alongside the caller's. Worker patches
   land in the worker's filesystem; the caller copies them out via the
   delegation result's `patch` field.
-- **Fleet mode** — set `TANGLE_FLEET_ID` before launching the MCP server.
-  `createFleetWorkspaceExecutor` dispatches into the fleet's shared
+- **`createFleetWorkspaceExecutor`** — dispatches into the fleet's shared
   workspace. Worker diffs land directly on the caller's filesystem with
-  no cross-sandbox boundary. The parent sandbox sets this when launching
-  the MCP server inside a fleet-aware harness.
-- `TANGLE_FLEET_EXCLUDE_MACHINES` — comma-separated machine ids to skip
+  no cross-sandbox boundary.
+- **`detectExecutor({ sandboxClient })`** — resolves the choice from env:
+  `TANGLE_FLEET_ID` set → fleet-workspace placement;
+  `TANGLE_FLEET_EXCLUDE_MACHINES` — comma-separated machine ids to skip
   during fleet round-robin (typically the coordinator machine the MCP
-  server is itself running on).
+  server is itself running on). Refuses to silently degrade — a fleet id
+  whose handle can't resolve is an error, not a fallback to sibling mode.
 
-The bin auto-detects with `detectExecutor({ sandboxClient })`; the choice
-is logged to stderr at startup. Refuse to silently degrade — if
-`TANGLE_FLEET_ID` is set but the key can't resolve the handle, the bin
-exits 2.
+### Bin env knobs (`src/mcp/bin.ts` header is the source of truth)
 
-### Other bin env knobs
-
-- `MCP_MAX_CONCURRENT_SANDBOXES` — default 4; the kernel's `maxConcurrency`.
-- `MCP_CODER_FANOUT_HARNESSES` — comma-separated harness ids for variants > 1.
-- `MCP_DISABLE_CODER` / `MCP_DISABLE_RESEARCHER` — omit a tool selectively.
+- `TANGLE_API_KEY` — required to serve `delegate`; passed to
+  `new Sandbox({ apiKey })`.
 - `SANDBOX_BASE_URL` — sandbox-SDK base URL override.
+- `MCP_ENABLE_DELEGATE` — set to `1` to serve the generic `delegate` verb.
+- `MCP_SUPERVISOR_MODEL` — supervisor brain model id (falls back to
+  `MCP_WORKER_MODEL`, then `WORKER_MODEL`, then a default). Must be a
+  tool-calling model.
+- `MCP_SUPERVISOR_ROUTER_KEY` — router key for the supervisor brain
+  (defaults to `TANGLE_API_KEY`).
+- `MCP_SUPERVISOR_ROUTER_BASE_URL` — router base for the supervisor brain
+  (defaults to the repo's `resolveRouterBaseUrl`, normalized to `/v1`).
+- `MCP_DELEGATE_WORKER_HARNESS` — harness the authored workers run on
+  (default `opencode`).
+- `AGENT_RUNTIME_DELEGATION_STATE_FILE` — absolute path of a JSON state
+  file. When set, delegation records persist across MCP restarts
+  (`FileDelegationStore`): status/history survive and idempotency keys
+  dedupe across processes.
+- `AGENT_RUNTIME_DELEGATION_STATE_RECOVER=1` — archive a corrupt state file
+  (`<file>.corrupt-<ts>`) and start empty instead of refusing to boot.
+- `AGENT_RUNTIME_DELEGATION_RETAIN_TERMINAL` — positive integer cap on
+  retained terminal records. Unset = keep forever.
+- `OTEL_EXPORTER_OTLP_ENDPOINT` (+ `TRACE_ID` / `PARENT_SPAN_ID`) — export
+  the supervisor's loop-topology spans to the OTLP / Tangle Intelligence
+  sink; the same context is stamped onto every delegation record.
 
 ### When to use each tool
 
 | Tool | Use when |
 | --- | --- |
-| `delegate_code` | The user needs code written / fixed / refactored in a real repo; ≥ 50 lines, multiple files, or test coverage matters. Skip for trivial inline scripts. |
-| `delegate_research` | Recency-bound web evidence, competitor teardowns, audience research, corpus lookups — anything needing source-grounded `items[]` with provenance. |
-| `delegation_status` | Poll every 30–60s while waiting on `delegate_code` / `delegate_research`. Never busy-poll. |
+| `delegate` | You want an outcome — code fixed, a question researched with citations, a refactor — without specifying HOW. State the intent; the supervisor authors the worker, runs it on a conserved budget, and returns the delivered result + `spentTotal` synchronously. |
+| `delegation_status` | Poll every minute or two while waiting on an async delegation (`delegate_ui_audit`). Never busy-poll. `includeTrace: true` for the span tree. |
 | `delegation_history` | Before delegating a question you might have asked before. Feed into routing + calibration. |
 | `delegate_feedback` | After you've used a delegation output and formed a judgment. Append-only — every call is a new event. |
 
@@ -395,8 +461,8 @@ export function composeProductionAgentProfile(
 import { composeProductionAgentProfile } from '../src/lib/.server/sandbox'
 
 const profile = composeProductionAgentProfile({ sandboxApiKey: process.env.TANGLE_API_KEY })
-// Pass `profile` into the sandbox client used by `runLoop` or the
-// equivalent `runChatThroughRuntime` backend, never into a vanilla
+// Pass `profile` into the sandbox client used by `runLoop` or the durable
+// chat entrypoint `handleChatTurn`, never into a vanilla
 // `createOpenAICompatibleBackend` — that transport posts plain
 // `chat/completions` with no `tools` field; MCP tools never surface.
 ```
@@ -412,13 +478,13 @@ import { composeProductionAgentProfile } from '../src/lib/.server/sandbox'
 
 describe('eval AgentProfile mirrors production', () => {
   it('mounts the delegation MCP server', () => {
-    const profile = composeProductionAgentProfile({ sandboxApiKey: 'sk_sb_test' })
+    const profile = composeProductionAgentProfile({ sandboxApiKey: 'sk-tan-test' })
     expect(profile.mcp).toHaveProperty('agent-runtime-delegation')
-    expect(profile.mcp?.['agent-runtime-delegation']?.metadata?.tools).toContain('delegate_research')
+    expect(profile.mcp?.['agent-runtime-delegation']?.metadata?.tools).toContain('delegate')
   })
   it('keeps prompt + permissions blocks from production', () => {
-    const prod = composeProductionAgentProfile({ sandboxApiKey: 'sk_sb_test' })
-    const evalP = composeProductionAgentProfile({ sandboxApiKey: 'sk_sb_test', name: 'eval-shadow' })
+    const prod = composeProductionAgentProfile({ sandboxApiKey: 'sk-tan-test' })
+    const evalP = composeProductionAgentProfile({ sandboxApiKey: 'sk-tan-test', name: 'eval-shadow' })
     expect(evalP.prompt.systemPrompt).toBe(prod.prompt.systemPrompt)
     expect(Object.keys(evalP.permissions ?? {}).sort()).toEqual(Object.keys(prod.permissions ?? {}).sort())
   })
@@ -443,78 +509,176 @@ describe('eval AgentProfile mirrors production', () => {
   when reality is "agent never reached the model." Surface backend errors
   as harness-level failures, not as zero-score scenario results.
 
+## Product eval leaderboard — `defineLeaderboard` (the authoring entry point)
+
+Authoring a product eval leaderboard is ONE call:
+`defineLeaderboard({ name, cases, prompt, score, axis?, backends?, flags?,
+setup?/teardown?, onCellEvents?, resolveModel?, export?, dispatch?, judges?,
+matrix? })` from `@tangle-network/agent-runtime/loops`. The facade owns the
+whole frame (the `resolveModel` seam, iteration metadata, and a generic
+`TArtifact` are part of it) — do NOT hand-assemble it per product:
+
+- the standard CLI flags: `--backend` / `--harnesses` / `--models` / `--cases`
+  / `--shots` / `--reps` / `--run-dir` / `--export-dir` (plus product `flags`),
+- a FRESH default run-dir per invocation (only an explicit `--run-dir` opts
+  into resume, so a rerun never silently reuses a failed zero-token cell),
+- the harness × model axis via `expandProfileAxes`,
+- ONE `runProfileMatrix` call,
+- result export + the ranked leaderboard rendering,
+- `toBenchmarkAdapter()` so the same spec plugs into the bench harness.
+
+A product writes ~150-250 domain lines: the `cases`, the `prompt` builder, and
+the `score` grader. Everything else is the facade's job.
+
+```ts
+import { defineLeaderboard } from '@tangle-network/agent-runtime/loops'
+
+const board = defineLeaderboard<TaxCase, TaxReturnArtifact>({
+  name: 'taxcalc',
+  cases: TAXCALC_CASES,
+  prompt: (c) => buildTaxPrompt(c),
+  score: (artifact, c) => gradeReturn(artifact, c),   // number | LeaderboardScore
+  axis: { harnesses: ['claude-code', 'codex'] },      // omit → CODING_HARNESSES
+  onCellEvents: (events, c) => captureDomainMetrics(events, c),
+})
+await board.run(process.argv.slice(2))
+```
+
+Two override levels, both DATA on the spec:
+
+- **Level 1** — `parseOutput` / `onCellEvents` / `resolveModel` / `export`:
+  reshape what the default dispatch produces. `resolveModel` reads the
+  backend's usage/terminal events to pin the real snapshot model id for
+  native-model cells (`HARNESS_NATIVE_MODEL` expansion).
+- **Level 2** — `dispatch` / `judges`: full replacement. `dispatch` is how
+  in-process products plug in — e.g. a product whose agent runs through
+  `runChatThroughRuntime` supplies a dispatch that drives that path instead
+  of a sandbox box. `judges` replaces the default `score`-wrapped judge.
+
+`runProfileMatrix` stays public as the escape floor for shapes the facade
+cannot express — but reaching for it FIRST, or re-implementing flag parsing /
+run-dir management / export around it, is the anti-pattern the facade
+exists to delete.
+
 ## Cross-profile matrix — `runAgentMatrix`
 
 `@tangle-network/agent-eval/matrix` exports `runAgentMatrix` (the runner is
-shipped, not just the types), `MatrixAxis`, `MatrixCell`, `CellResult`,
-`RunAgentMatrixOptions`, `buildByAxis`, and `summariseRows`. It sweeps the
-cartesian product of caller-provided axes × replicates and aggregates by axis.
-Use for: cross-provider benchmarking ("does claude-sonnet-4-7 beat deepseek-chat
-on persona X?"), thinking-level ablations, harness selection ("which coder
-harness wins on this repo?").
+shipped, not just the types) plus `MatrixScenario`, `MatrixAxes`, and
+`axisExtractors`. It sweeps scenarios × profiles × replicates and aggregates by
+axis. Use for: cross-provider benchmarking ("does claude-sonnet-4-7 beat
+deepseek-chat on persona X?"), thinking-level ablations, harness selection
+("which coder harness wins on this repo?").
 
 ```ts
-import { runAgentMatrix, type MatrixAxis, type RunAgentMatrixOptions } from '@tangle-network/agent-eval/matrix'
-import type { AgentProfile } from '@tangle-network/agent-interface'
+import type {
+  MatrixScenario, RunAgentMatrixOptions,
+} from '@tangle-network/agent-eval/matrix'
+import { axisExtractors } from '@tangle-network/agent-eval/matrix'
 
-type TaskScenario = { id: string; task: unknown }
-
-const axes: MatrixAxis<unknown>[] = [
-  { name: 'scenario', values: scenarios.map((scenario) => ({ id: scenario.id, value: scenario })) },
-  { name: 'profile', values: [claudeProfile, codexProfile].map((profile: AgentProfile) => ({ id: profile.name ?? profile.model?.default ?? 'profile', value: profile })) },
-  { name: 'harness', values: ['opencode', 'codex'].map((harness) => ({ id: harness, value: harness })) },
-]
-
-const options: RunAgentMatrixOptions<unknown> = {
-  axes,
-  async runCell(cell) {
-    const scenario = cell.axes.scenario.value as TaskScenario
-    const profile = cell.axes.profile.value as AgentProfile
-    const harness = cell.axes.harness.value as string
-    const started = Date.now()
-    const loopResult = await runLoop({
-      task: scenario.task,
-      agentRuns: [{ profile, harness }],
-      output,
-      validator,
-      driver,
-      ctx: { sandboxClient },
-    })
-    const verdict = loopResult.winner?.verdict ?? { valid: false, score: 0, reason: 'no valid winner' }
-    return {
-      output: loopResult.winner?.output,
-      verdict,
-      costUsd: loopResult.costUsd ?? 0,
-      durationMs: Date.now() - started,
-    }
+const result = await runAgentMatrix({
+  scenarios,                               // MatrixScenario<Task>[]
+  profiles: [claudeProfile, codexProfile], // AgentProfile[] from @tangle-network/agent-interface
+  runCell: async (cell, signal) => {
+    // cell carries { scenario, profile, repIndex, axes }. You spawn the
+    // sandbox, drive the loop, score, return { score, costUsd, output? }.
+    const loopResult = await runLoop({ task: cell.scenario.task, agentRuns: [{ profile: cell.profile, harness: cell.axes.harness }], output, validator, driver, ctx: { sandboxClient, signal } })
+    return { score: loopResult.winner?.verdict.score ?? 0, costUsd: loopResult.costUsd, output: loopResult.winner?.output }
+  },
+  axes: {
+    harness: axisExtractors.harness,            // built-in
+    model: axisExtractors.model,
+    thinkingLevel: axisExtractors.thinkingLevel,
+    persona: (profile) => profile.metadata?.persona as string | undefined,
   },
   reps: 3,
   maxConcurrency: 4,
   costCeiling: 5.0,                          // abort cleanly when cumulative cost crosses $5
-}
-
-const result = await runAgentMatrix(options)
+})
 ```
 
 ### Aggregation
 
-`result.byAxis[axisName][axisValueId]` carries `AxisSummary` rows (passRate,
-meanScore, p50Score, p90Score, totalCostUsd, meanDurationMs). `result.summary`
-carries `totalCells`, `runsExecuted`, `cellsSkipped`, overall pass/score, total
-cost, and duration. Use these for the public benchmark dashboard; do NOT
-recompute by hand from `cells[]` — the substrate's aggregator already handles
-skipped cells correctly.
+`result.byAxis` carries `AxisSummary[]` per axis (passRate, meanScore,
+totalCostUsd, sampleSize). `result.summary` carries totals +
+`costCeilingReached` + `aborted` + `skippedCells`. Use these for the
+public benchmark dashboard; do NOT recompute by hand from `cells[]` —
+the substrate's aggregator already handles `skipped` correctly.
 
 ### Gotchas
 
 - `runCell` may throw; the matrix captures throws as `CellResult.error`
   WITHOUT aborting the rest of the run. Partial completion is observable
-  via `summary.cellsSkipped`.
+  via `summary.skippedCells`.
 - `costCeiling` is a soft abort — in-flight cells finish; new ones don't
   start. Set it conservatively for paid-backend matrices.
-- The top-level `signal` option stops scheduling new cells. In 0.95.1
-  `runCell` receives only the `MatrixCell`; do not write examples that expect a
-  second `signal` argument.
+- `signal` propagates a child `AbortSignal` into your `runCell`; honour
+  it or the matrix can't abort cleanly.
+
+### Harness × model as a first-class axis — `expandProfileAxes` + `runProfileMatrix`
+
+The harness (`opencode` / `claude-code` / `codex` / `kimi-code`) and the model
+are ONE eval axis, generated from a single base domain profile — NOT a list each
+product re-declares. `defineLeaderboard` drives this whole axis for you; use
+the primitives below directly only when working underneath the facade.
+`@tangle-network/agent-eval` owns the axis:
+
+- **`CODING_HARNESSES`** — the single canonical harness list. Import it; never
+  re-declare a local `HARNESSES` / `HarnessBackend` array in a product.
+- **`expandProfileAxes({ base, harnesses?, models? }) → AgentProfile[]`** —
+  generates the harness × model sweep from one base `AgentProfile`. Omit
+  `harnesses` / `models` and it expands to `CODING_HARNESSES × the base model`
+  (the "turn it on for every harness/model" switch). `harnessSupportsModel`
+  filters per harness, and a vendor-locked harness that supports NONE of the
+  requested models SNAPS to its native default (`HARNESS_NATIVE_MODEL`) —
+  it is never silently dropped from the sweep. You never hand-filter.
+- **`runProfileMatrix({ profiles, scenarios, dispatch, judges })`** — runs that
+  profile set and stamps a harness/model-aware `AgentProfileCell` on every
+  `RunRecord`. Harness is carried at the record layer, not smuggled in metadata.
+- **`groupRunsByAgentProfileCell(result.records)`** — the ONE way to pivot the
+  result by harness / model. Do NOT read `metadata.harness` by hand and do NOT
+  recompute a join key.
+
+```ts
+import {
+  CODING_HARNESSES, expandProfileAxes, groupRunsByAgentProfileCell,
+  runProfileMatrix,
+} from '@tangle-network/agent-eval'
+
+const profiles = expandProfileAxes({
+  base: composeProductionAgentProfile(),   // one domain profile
+  harnesses: CODING_HARNESSES,             // omit → every canonical harness
+  // models omitted → the base model only
+})
+
+const result = await runProfileMatrix({ profiles, scenarios, dispatch, judges })
+
+for (const [cell, runs] of groupRunsByAgentProfileCell(result.records)) {
+  // `cell` is harness/model aware — pivot the leaderboard by it
+}
+```
+
+Harness is NOT a field on the neutral `AgentProfile` (agent-interface) — it is a
+RUN-layer / executor coordinate. `expandProfileAxes` stamps it onto each
+generated profile's cell, the loop carries it in the `{ profile, harness }` run
+spec, and the executor-overridable brain preference lives on agent-runtime's
+`SupervisorProfile.harness` (`null` → the in-process router brain; a coding-CLI
+harness → a sandboxed harness drives the coordination) and
+`ImproveCodeOptions.harness`. `harnessAxisOf(profile)` reads the generator's
+stamp when you need the harness off a single profile. The SAME
+`expandProfileAxes(...)` output feeds both the product self-improve loop
+(`selfImprove`) AND the research leaderboard — one axis, both uses.
+
+**Anti-patterns:**
+
+- **Local harness list.** A per-product `HARNESSES` / `HarnessBackend` array.
+  Import `CODING_HARNESSES` — the list lives in one place and grows there.
+- **Harness in metadata + a bespoke reader.** Stuffing the harness into
+  `metadata.harness` and grouping with a hand-rolled helper. Use the stamped
+  `AgentProfileCell` + `groupRunsByAgentProfileCell` — the recompute-the-join-key
+  path was the bug.
+- **Harness baked into the model id.** Encoding `claude-code/claude-sonnet` as a
+  single model string so the same model can't run under multiple harnesses.
+  Harness and model are orthogonal coordinates; keep them separate on the cell.
 
 ## Live trace flow — the production-to-evolution pipeline
 
@@ -522,7 +686,7 @@ The same trace surface a chat turn emits is the substrate the analyst loop
 and improvement loop consume. Wire once; every flow downstream is free.
 
 ```txt
-runLoop / runChatThroughRuntime
+runLoop / handleChatTurn
   └─ SandboxEvent stream (text_delta / tool_call / tool_result / artifact)
        └─ output.parse(events)        — typed Output (CoderOutput, research items, chat finalText)
             └─ validator.validate     — DefaultVerdict { score, valid, error? }
@@ -671,8 +835,7 @@ import {
 } from '@tangle-network/agent-runtime/loops'
 
 export function ownedLoopTraceSource(runId: string) {
-  const { source, record } = createPushTraceSource({ runId })
-  return { source, record }
+  return createPushTraceSource({ runId })
 }
 
 export function sandboxTraceSource(
@@ -684,20 +847,37 @@ export function sandboxTraceSource(
 }
 ```
 
-Owned loops call `record(...)` on the returned push-source handle as tools
-execute, and pass `source` to downstream collectors. Sandbox or fleet runs
-collect spans from session parts at settle time. The same persisted span stream
-feeds analyst findings and the improvement loop.
+Owned loops call `record(...)` on the returned push source as tools execute.
+Sandbox or fleet runs collect spans from session parts at settle time. The
+same persisted span stream feeds analyst findings and the improvement loop.
 
 ### Gotchas
 
 - Do not copy old examples that import `createProductionTraceSink` or
-  `ProductionTraceSink`; `npm pack @tangle-network/agent-runtime@0.70.0` did
-  not expose those names.
+  `ProductionTraceSink`; the current `@tangle-network/agent-runtime` package
+  does not expose those names.
 - Owned tool loops must record spans at dispatch time; sandbox loops must
   collect session parts before teardown.
 - Trace export failures must not fail the user path. Persist the run record
   and warn on telemetry forwarding failure.
+
+### Adjacent surface — `@tangle-network/agent-runtime/intelligence`
+
+The product-facing observe + delivery layer lives at
+`@tangle-network/agent-runtime/intelligence`: `withTangleIntelligence(agent, config)`
+wraps a produce function (effort tiers `off | eco | standard | thorough | max`),
+and `pullCertified` / `withCertifiedDelivery` fold the certified composed
+profile from `GET {TANGLE_INTELLIGENCE_URL | https://intelligence.tangle.tools}/v1/profiles/:target/composed`
+(Bearer `TANGLE_API_KEY`; 5-minute refresh; fail-closed — a network error or
+non-2xx falls back to the base surface, never throws). The export leg needs
+`INTELLIGENCE_OTLP_ENDPOINT` (or `OTEL_EXPORTER_OTLP_ENDPOINT`); absent, export
+is a silent no-op — `doctor().exportConfigured` reveals it. The default
+redactor scrubs keys matching `session[-_]?(id|token)` from exported input, so
+session identity rides `TraceMeta.labels`, not input fields. Dashboard
+visibility at intelligence.tangle.tools is tenant-scoped by the
+`TANGLE_API_KEY` owner (the operator/team, not the product's end users).
+Wiring this into a product is `agent-stack-adoption`'s intelligence phase, not
+this skill's scope.
 
 ## 4. `assertRealBackend` + `enforceBackendIntegrity` guard — **the Phase A insight**
 
@@ -835,61 +1015,40 @@ Same shape in `tax-agent/tests/eval/lib/scorecard-integration.ts`,
 - Reference PRs: `creative-agent#145`, `tax-agent#90`, `gtm-agent#144`,
   `legal-agent#97`.
 
-## 6. Per-run `AgentProfileCell` — `buildAgentProfileCell` / `buildAgentInterfaceProfileCell`
+## 6. Per-run `AgentProfileCell` — `buildAgentProfileCell` / `buildSandboxAgentProfileCell`
 
 Coexists with the scorecard profile; do not conflate them. The scorecard's
 `AgentProfile` is the behaviour-only key whose hash is stable across runs.
 The `AgentProfileCell` is stamped per-`RunRecord` and carries the run-time
 identity: harness id+version, model, prompt hash, backend label, persona
 suite. Use it to filter scorecard cells by harness or backend after the
-fact.
+fact. `runProfileMatrix` stamps this cell on every `RunRecord` for you; pivot
+the records with `groupRunsByAgentProfileCell(result.records)` — never read
+`metadata.harness` by hand or recompute a join key.
 
 `creative-agent/eval/agent-profile-cell.ts:1`:
 
 ```ts
-import {
-  AGENT_PROFILE_KINDS,
-  buildAgentInterfaceProfileCell,
-  buildAgentProfileCell,
-  toAgentProfileJson,
-  type AgentProfileCell,
-} from '@tangle-network/agent-eval'
+import { buildAgentProfileCell, type AgentProfileCell, type AgentProfileJson } from '@tangle-network/agent-eval'
 
 export async function buildCreativeAgentProfileCell(args: {
   harnessVersion: string; model: string; promptHash: string;
   backend: string; personaSuite: string;
 }): Promise<AgentProfileCell> {
-  return buildAgentInterfaceProfileCell(creativeAgentProfile, {
+  return buildAgentProfileCell({
+    profileId:     `${creativeAgentProfile.name}@${creativeAgentProfile.version}`,
+    sourceProfile: { kind: 'sandbox-agent-profile', profile: toAgentProfileJson(creativeAgentProfile) },
     harness:       { id: 'creative-agent-canonical-eval', version: args.harnessVersion },
     model: args.model, promptHash: args.promptHash,
     dimensions:    { backend: args.backend, personaSuite: args.personaSuite },
   })
 }
-
-export async function buildAdvancedProfileCell(args: {
-  harnessVersion: string; model: string; promptHash: string;
-  backend: string; personaSuite: string;
-}): Promise<AgentProfileCell> {
-  return buildAgentProfileCell({
-    profileId: `${creativeAgentProfile.name}@${creativeAgentProfile.version}`,
-    sourceProfile: {
-      kind: AGENT_PROFILE_KINDS.AGENT_INTERFACE_PROFILE,
-      profile: toAgentProfileJson(creativeAgentProfile),
-    },
-    harness: { id: 'creative-agent-canonical-eval', version: args.harnessVersion },
-    model: args.model,
-    promptHash: args.promptHash,
-    dimensions: { backend: args.backend, personaSuite: args.personaSuite },
-  })
-}
 ```
 
-For products consuming an `@tangle-network/agent-interface` `AgentProfile`
-directly, prefer `buildAgentInterfaceProfileCell(profile, { harness, model,
-promptHash, dimensions })`. It hard-codes
-`AGENT_PROFILE_KINDS.AGENT_INTERFACE_PROFILE` (`'agent-interface-profile'`) and
-the JSON canonicalization. Use manual `buildAgentProfileCell` only for advanced
-cases such as precomputed source hashes or custom profile-id conventions.
+For products consuming a sandbox-SDK `AgentProfile` directly, use the
+short-circuit `buildSandboxAgentProfileCell(profile, { harness, model,
+promptHash, dimensions })` (`@tangle-network/agent-eval`) — it
+hard-codes the `sandbox-agent-profile` kind and the JSON canonicalization.
 
 ### Gotchas
 
@@ -910,22 +1069,12 @@ Skeleton:
 
 ```ts
 import {
-  defaultProductionGate,
   runImprovementLoop,
   type MutableSurface,
   type RunImprovementLoopResult,
   type Scenario,
 } from '@tangle-network/agent-eval/campaign'
 
-const gate = defaultProductionGate<Artifact, Scenario>({
-  holdoutScenarios,
-  deltaThreshold: 0.03,
-  minProductiveRuns: 3,
-  criticalDimensions: ['hallucination_free'],
-  budgetUsd: 25,
-})
-
-// Function generics are <Scenario, Artifact>; result generics are <Artifact, Scenario>.
 const result: RunImprovementLoopResult<Artifact, Scenario> =
   await runImprovementLoop<Scenario, Artifact>({
     runId,
@@ -951,14 +1100,122 @@ The train and holdout scenario ids must be disjoint. `runImprovementLoop`
 fails before rollout if the optimizer can see a scenario that later gates
 promotion.
 
+### The gate — ships on the MEAN paired delta, tie-robust
+
+When you pass no `gate`, `runImprovementLoop` uses `defaultProductionGate`.
+It composes held-out significance + a per-dimension anti-Goodhart regression
+guard + red-team + reward-hacking + canary + budget into one `Gate.decide`.
+For held-out significance as ONE of N composed gates instead of the full stack,
+use `heldOutGate` and `composeGate`. Both gates, plus their statistical core
+(`heldoutSignificance` + `pairHoldout`), are exported from `/contract` and
+`/campaign`.
+
+### `neutralizationGate` — did the CONTENT cause the lift, or the footprint?
+
+A held-out gate proves a candidate beat baseline; it CANNOT prove the lift came
+from the candidate's CONTENT rather than from the extra prompt/mount FOOTPRINT
+that content added (more bytes, a longer prompt). `neutralizationGate`
+(`@tangle-network/agent-eval/campaign`, new in 0.107.0) closes that hole: it
+compares the candidate's held-out lift against the lift of a FOOTPRINT-MATCHED
+neutralized variant (same layout + length, zero content, via `neutralizeText`).
+If the neutralized placebo reproduces more than `maxDecorativeFraction`
+(default 0.5) of the candidate's lift, the lift is decorative and the candidate
+is HELD regardless of how large or significant its raw lift is. Compose it AFTER
+the significance gate — significance says the lift is real, this says the
+content CAUSED it:
+
+    composeGate(heldOutGate({ ... }), neutralizationGate({ scenarios }))
+
+It requires `ctx.neutralizedJudgeScores`, populated ONLY when `runImprovementLoop`
+is given a `neutralize` fn (`runImprovementLoop({ ..., neutralize })`); a gate
+composed without that wiring fails loud rather than silently passing an
+unproven candidate.
+
+Both ship on the **mean paired-delta bootstrap CI lower bound**, not a point
+estimate and not the median. `defaultProductionGate` options:
+
+- `holdoutScenarios` — the held-out set (required).
+- `deltaThreshold` — the minimum lift the **CI lower bound** must clear, in the
+  judge's native composite scale. Default 0. This is a confidence bound, not a
+  point estimate.
+- `heldoutStatistic` — the ship statistic. Default `'mean'` (tie-robust). Pass
+  `'median'` only for outlier-robustness, and only when you understand you are
+  trading it for tie-blindness.
+- `minProductiveRuns` — below this many paired holdout observations the gate
+  HOLDS with `few_runs` rather than reading a degenerate CI. Default 3.
+- `criticalDimensions` / `regressionTolerance` — dimensions that must not
+  significantly regress even when the net composite rises.
+- `budgetUsd`, `redTeamBattery`, `recentRuns`, `blockOnRewardHackingGaming` —
+  the safety + spend guards.
+
+Every gate result reports `deltaMean`, `deltaMedianDiagnostic`, and
+`tieFraction`. **The median is a reported diagnostic only.** Why the mean is the
+ship statistic: once holdout scenarios saturate, most paired cells tie (baseline
+and every candidate score identically), the tie fraction climbs, and the median
+paired delta pins to 0 — so a median gate HOLDS a genuinely-better candidate. A
+real +0.18 lift at ~50% ties reads as median 0 and never ships. The mean paired
+delta still moves with the non-tied cells, so the mean gate ships the real lift
+while `tieFraction` (warned above `TIE_WARN_FRACTION`) tells you the holdout is
+saturating.
+
+The legacy `HeldOutGate` CLASS (root-only export, options
+`pairedDeltaThreshold` / `overfitGapThreshold`) ships on the MEDIAN paired
+delta and is the exact tie-domination gate above. It still compiles for
+back-compat but is NOT the adoption path and is absent from `/contract` and
+`/campaign`. Wire `defaultProductionGate` / `heldOutGate`, not the class.
+
+### Carrier — WHERE you deliver the content decides if a small model reads it
+
+`neutralizationGate` proves the content, not the footprint, caused the lift. The
+prior question it does not answer: was the content ever READ? For small models
+the delivery surface — the carrier — dominates that, and the wrong carrier reads
+as "the knowledge didn't help" when the model simply never opened it. Measured
+on crit-create/EOPS with deepseek-v4-flash: the SAME authored fix scores 0.00 as
+a mounted `resources.files` doc the model never chooses to open, versus 0.625
+when delivered on the tool/function schema in the tools-list that the harness
+auto-reads on every turn — +0.54 over a 0.083 baseline. Deliberately-wrong
+content on that same carrier collapses to 0.25, which is the content-causality
+control: the carrier alone is not carrying it, the correct content is. So for
+small models prefer the tool/MCP schema carrier over `resources.files`, make the
+carrier an explicit choice in the AgentProfile rather than a default, and still
+compose `neutralizationGate` to prove the authored content — not its mere
+presence on a read carrier — earned the lift.
+
+### `powerPreflight` — can this budget even see the lift?
+
+Before you spend a search, `powerPreflight({ baselineComposites, pairedN?,
+deltaThreshold?, sharedScorerChannel? })` (`/campaign`) computes the
+minimum-detectable-lift from the baseline holdout composites' variance
+(`MDE = deltaThreshold + z·√2·sd/√n`). If the MDE is larger than any lift a
+prompt change plausibly produces, the run is structurally unable to ship no
+matter how good the proposer is — the budget only re-learns what a 30-second
+calculation on the baseline cells already knew. `selfImprove` attaches a
+`PowerPreflight` to every result and warns when a run was structurally
+underpowered. Caveat carried in the result: when the holdout is scored by the
+SAME judge family as the gate (`sharedScorerChannel: true`), the MDE is a lower
+bound — more cells cannot buy back systematic judge bias, only an independent
+second scoring channel can.
+
+### Build a holdout with power — `scoreDiscrimination` / `selectDiscriminative`
+
+Adding holdout scenarios for "power" backfires if they are saturated ties — a
+tie wastes a paired cell and drags the tie fraction up. `scoreDiscrimination`
+ranks scenarios by how well they separate candidates (variance of the candidate
+scores, headroom breaking ties); `selectDiscriminative(signals, k)` picks the
+top-`k` most discriminative scenario ids and drops fully saturated ties when
+enough non-tied scenarios exist. Use it to CHOOSE the holdout set by signal
+instead of hand-curating 5-10 scenarios that may not separate anything.
+
 ### Gotchas
 
-- **The gate fails closed.** `deltaThreshold`, `minProductiveRuns`,
-  `criticalDimensions`, budget, and reward-hacking checks must all pass. A
-  "promote when better than baseline" rule without these is a regression vector.
-- **Static skills are not loop-owned.** The loop rewrites a single
-  `prompt-addendum.ts` only. Skills under `agent-prompt/skills/` are
-  human-curated.
+- **The gate is fail-closed.** The composed default holds unless held-out
+  significance AND every safety/budget/dimension check passes. A "promote when
+  better than baseline" without a CI lower bound is a regression vector.
+- **The loop optimizes the `MutableSurface` you give it.** With
+  `baselineSurface: BASELINE_PROMPT_ADDENDUM` it rewrites the prompt addendum.
+  Whether static skills or code are also loop-owned is a product policy choice,
+  not a substrate limit — the `improve()` verb (below) targets `'skills'` and
+  `'code'` surfaces through the same held-out gate.
 - **Rendered prompt diffs must produce syntactically valid TS modules** —
   the auto-PR helper commits the rendered change verbatim. Round-trip the result
   through `tsc --noEmit` in tests.
@@ -966,13 +1223,56 @@ promotion.
   before calling. Falling back to the free router for paid judge calls is
   a footgun; throw `ValidationError`.
 
+## `improve()` — the pluggable RSI verb
+
+`improve(profile, findings, opts)` (`@tangle-network/agent-runtime` root) is the
+ONE public self-improvement verb — a facade over agent-eval's `selfImprove` that
+runs the held-out-gated closed loop and returns `{ profile, shipped, lift }`.
+Pick the lever with `opts.surface`
+(`'prompt' | 'skills' | 'tools' | 'mcp' | 'hooks' | 'code'`, default `'prompt'`):
+
+- `'prompt'` — `gepaProposer` mutates `profile.prompt.systemPrompt`. Zero extra
+  config.
+- `'skills'` — `skillOptProposer` optimizes a skill DOCUMENT. The profile's
+  `skills` refs are file pointers a document-patcher cannot edit, so you pass the
+  document text and a persister: `opts.skills: ImproveSkillsOptions { document,
+  writeBack }`. `writeBack(winnerDocument)` fires only on a ship verdict.
+- `'code'` — the real coding tier: the facade assembles git worktrees driven by
+  a coding harness with a `verify` gate. `opts.code: ImproveCodeOptions {
+  repoRoot, baseRef?, worktreeDir?, harness?, verify?, timeoutMs?, generator? }`.
+  Without `code` or a caller-supplied `generator` it FAILS LOUD — there is no
+  safe zero-config repo to invent.
+
+Every surface ships only through the same held-out gate; `improve` never
+promotes an ungated candidate.
+
+## Multi-track improvement — the Lineage DAG
+
+Single-track `runImprovementLoop` improves one lineage. The Lineage DAG is the
+layer above it: a git-graph of improvement candidates with multi-parent merges
+and visioned tracks, driven by an agent-managed governor that decides
+extend / branch / merge / prune / stop. From `@tangle-network/agent-eval/campaign`:
+
+- **`Lineage`** + **`runLineage`** — the DAG structure and its engine, with two
+  abstract seams (`step`, `merge`).
+- **`runLineageLoop`** — the preset that wires those seams to the REAL
+  improvement machinery (one small proposer generation per step; a GEPA
+  crossover on `merge`), so the DAG runs against a live proposer + scorer. Per
+  step the budget is intentionally small (one generation) — the governor
+  controls BREADTH across steps, not depth within one.
+- **`heuristicGovernor`** (default) / **`callbackGovernor`** — the decide-next-op
+  layer; `callbackGovernor` hands the decision to your own function.
+- **`fsLineageStore`** / **`memLineageStore`** — durable vs in-memory DAG
+  persistence.
+
 ## 8. `runEvalCampaign` — variant × scenario × seed sweeps
 
 When you need to compare multiple candidate variants over the same scenarios
-with paired statistics, use `runEvalCampaign`
-from `@tangle-network/agent-eval`. Single-variant nightly runs do not
-need it — they emit single-variant `analyzeOptimizationResult` derivatives
-straight from the canonical runner.
+with paired statistics, use `runEvalCampaign` (`@tangle-network/agent-eval`).
+Single-variant nightly runs do not need it — they turn their `RunRecord[]`
+into an `InsightReport` (paired-bootstrap lift, judge stats, failure clusters)
+via `analyzeRuns()` from `@tangle-network/agent-eval/contract`, the current
+run-analysis entry point.
 
 Validate: throws on empty variants, empty scenarios, duplicate variant ids,
 duplicate scenarioIds. Treat those as authoring errors and fix the caller.
@@ -1051,7 +1351,7 @@ omits any one of them is shipping the bug class it prevents:
    main. Round-trip every renderer through `tsc --noEmit` in tests.
 10. **Eval backend lacks MCP tool support.** `createOpenAICompatibleBackend`
     POSTs `{ model, stream, messages }` only — no `tools`. An eval that
-    scores on `delegate_research` / `delegate_code` tool_call presence
+    scores on `delegate` tool_call presence
     through this transport scores 0 with `error: null` on every run. The
     fix is "use the sandbox client that respects `profile.mcp`," not
     "tweak the rubric."
@@ -1090,7 +1390,7 @@ omits any one of them is shipping the bug class it prevents:
 - Eval builds a parallel `AgentProfile` instead of importing the
   production composer (`composeProductionAgentProfile` or equivalent
   from `src/lib/.server/sandbox/`).
-- `runLoop` / `runChatThroughRuntime` errors are swallowed — `backend_error`
+- `runLoop` / `handleChatTurn` errors are swallowed — `backend_error`
   events in the stream don't propagate to harness-level failure.
 - MCP delegation server mounted via static `AgentProfileMcpServer.env`
   rather than the runtime composer. The SDK doesn't template
@@ -1125,10 +1425,11 @@ A freshly-adopted product is correctly wired iff ALL hold:
       `build<Agent>AgentProfileCell({ harnessVersion, model, promptHash, backend, personaSuite })`
       and stamps every `RunRecord.agentProfile` before scorecard append.
 - [ ] `src/lib/.server/production-loop/` (or `<eval-root>/lib/production-loop.ts`)
-      calls `runImprovementLoop` with `holdoutScenarios` + `gate` +
-      `autoOnPromote: 'pr'` plus `ghOwner` / `ghRepo` when promotion should
-      open a PR. Loop owns a single
-      `prompt-addendum.ts`; static skills are out of scope.
+      calls `runImprovementLoop` with `holdoutScenarios` + a `defaultProductionGate`
+      / `heldOutGate` gate (mean paired delta) + `autoOnPromote: 'pr'` plus
+      `ghOwner` / `ghRepo` when promotion should open a PR. The loop optimizes
+      the `MutableSurface` it is given (the prompt addendum by default); which
+      surfaces are loop-owned vs human-curated is a product policy choice.
 - [ ] CLI flag `--fail-on-regression` (or `EVAL_FAIL_ON_REGRESSION=1`) wired
       through the canonical runner.
 - [ ] `.github/workflows/nightly-eval.yml` daily at 02:00 UTC on
@@ -1146,7 +1447,8 @@ A freshly-adopted product is correctly wired iff ALL hold:
       profile mounts the delegation MCP server and matches production's
       prompt / permissions / file-mount shape.
 - [ ] When mounting the MCP delegation tools: `buildDelegationMcpServer`
-      composes at runtime with a non-empty `TANGLE_API_KEY` and is
+      composes at runtime with a non-empty `TANGLE_API_KEY` (plus
+      `MCP_ENABLE_DELEGATE=1` for the `delegate` verb) and is
       merged into `profile.mcp` per turn — never declared statically.
 - [ ] The eval's backend understands `profile.mcp`. If using
       `createOpenAICompatibleBackend`, the rubric does NOT score on
@@ -1164,40 +1466,58 @@ file-for-file: `creative-agent`, `tax-agent`, `legal-agent`, `gtm-agent`.
 
 # Key docs
 
-- `references/current-substrate.md` — current package line and removed-symbol
-  checks. Run `scripts/check-substrate-versions.sh` before editing this list.
-- `@tangle-network/agent-interface@0.10.x` — the neutral contract: `AgentProfile`,
-  `AgentProfileMcpServer`, `HarnessType`, `ReasoningEffort`,
-  `Part` / `ToolPart` / `ToolState`, `harnessSupportsModel`, `reasoningEffortsFor`
-- `@tangle-network/agent-profile-materialize@0.1.0` — `materializeProfile`,
+- `references/current-substrate.md` — the single source of version truth +
+  removed-symbol checks. Run `scripts/check-substrate-versions.sh` before
+  editing that table. Package versions are NOT restated here.
+- `@tangle-network/agent-interface` — the neutral contract: `AgentProfile`
+  (no top-level `harness` field), `AgentProfileMcpServer`, `HarnessType`,
+  `ReasoningEffort`, `Part` / `ToolPart` / `ToolState`, `harnessSupportsModel`,
+  `reasoningEffortsFor`
+- `@tangle-network/agent-profile-materialize` — `materializeProfile`,
   `WorkspacePlan`, `applyWorkspacePlan`
-- `@tangle-network/agent-eval@0.95.x` README
-- `@tangle-network/agent-eval/docs/wire-protocol.md`
+- `@tangle-network/agent-eval/contract` — the frozen public barrel:
+  `defineAgentEval`, `selfImprove`, `runEval`, `runCampaign`,
+  `runImprovementLoop`, `defaultProductionGate`, `heldOutGate`, `composeGate`,
+  `analyzeRuns` → `InsightReport`, `fsCampaignStorage` / `inMemoryCampaignStorage`,
+  `OutcomeStore`, intake adapters (`fromClaudeCodeSession` / `fromCodexSession`
+  / `fromOtelSpans` / `fromFeedbackTable`)
+- `@tangle-network/agent-eval` README + `docs/wire-protocol.md`
+- `@tangle-network/agent-eval` — harness × model axis: `CODING_HARNESSES`,
+  `expandProfileAxes`, `runProfileMatrix`, `groupRunsByAgentProfileCell`,
+  `harnessAxisOf`, `HARNESS_NATIVE_MODEL`
 - `@tangle-network/agent-eval/matrix` — `runAgentMatrix` (shipped),
-  `MatrixAxis`, `MatrixCell`, `CellResult`, `RunAgentMatrixOptions`,
-  `buildByAxis`, `summariseRows`
+  `MatrixScenario`, `MatrixAxes`, `axisExtractors`
+- `@tangle-network/agent-eval/multishot` — `runMultishot`, `runMultishotMatrix`,
+  `MultishotTransport` (`agentTransport` / `driverTransport` injection seam)
 - `@tangle-network/agent-eval/campaign` — `runImprovementLoop`,
-  `runOptimization`, `Scenario`, `MutableSurface`
-- `@tangle-network/agent-runtime@0.70.x/loops` — `runAgentic`, `runLoop`,
+  `runOptimization`, `Scenario`, `MutableSurface`, the gate core
+  (`heldoutSignificance`, `pairHoldout`, `powerPreflight`), the placebo/footprint
+  gate (`neutralizationGate`, `neutralizeText`), discriminative
+  holdout selection (`scoreDiscrimination`, `selectDiscriminative`), and the
+  Lineage DAG (`Lineage`, `runLineage`, `runLineageLoop`,
+  `heuristicGovernor` / `callbackGovernor`, `fsLineageStore` / `memLineageStore`,
+  `Governor`)
+- `@tangle-network/agent-runtime/loops` — `defineLeaderboard`,
+  `resolveSandboxClient`, `streamAgentTurn` / `collectAgentTurn`, `leaderboard`
+  + `renderLeaderboardMarkdown` / `renderLeaderboardSvg` / `renderLeaderboardHtml`,
+  `runAgentic`, `runLoop`,
   `sample`, `refine`, `sampleThenRefine`, `adaptiveRefine`, `worktreeFanout`,
   `gateOnDeliverable`, `patchDelivered`, `selectValidWinner`,
   `createWorktreeCliExecutor`, `Driver` / `OutputAdapter` / `Validator` interfaces
-- `@tangle-network/agent-runtime/profiles` — `coderProfile` (an `AgentProfile`
-  constant), `DEFAULT_CODER_SYSTEM_PROMPT`, `coderTaskToPrompt`
+- `@tangle-network/agent-runtime` root — `resolveAgentBackend`
+  (`kind: 'router' | 'tcloud' | 'cli-bridge' | 'sandbox'`), `improve`
+  (the RSI verb; `ImproveCodeOptions` / `ImproveSkillsOptions`)
+- `@tangle-network/agent-runtime/profiles` — `CoderTask`, `coderTaskToPrompt`,
+  `uiAuditorProfile`, `createInProcessUiAuditClient`
 - `@tangle-network/agent-runtime/mcp` — `createMcpServer`,
-  `detachedSessionDelegate`, `createSiblingSandboxExecutor`,
+  `detachedSessionDelegate`, `detectExecutor`, `createSiblingSandboxExecutor`,
   `createFleetWorkspaceExecutor`; bin `agent-runtime-mcp`
+- `@tangle-network/agent-runtime/intelligence` — `withTangleIntelligence`,
+  `createIntelligenceClient` + `doctor()`, `pullCertified`,
+  `withCertifiedDelivery`, `composeCertifiedProfile`
 - `@tangle-network/agent-runtime/loops` — `TraceSource`,
   `createPushTraceSource`, `sandboxSessionTraceSource`
 - `@tangle-network/agent-runtime/agent` — `defineAgent`,
   `createSurfaceImprovementAdapter`, `createSurfaceKnowledgeAdapter`
-- `@tangle-network/agent-knowledge@1.7.x` — `proposeFromFindings`,
+- `@tangle-network/agent-knowledge` — `proposeFromFindings`,
   `applyKnowledgeWriteBlocks`, optional `multiHarnessResearcherFanout`
-
-## Causal Gate (neutralizationGate)
-
-Standard gates prove a candidate *beat baseline*; they do not prove the candidate's *content* caused the lift rather than the extra prompt bytes. `neutralizationGate` (agent-eval 0.107.0+, `neutralizeText` in `src/campaign/neutralize.ts`) is the placebo control: blank the candidate's added content to byte-length-matched filler, hold everything else fixed, and require the lift to vanish. If a fully-neutralized candidate still scores, the content was decorative — reject it. Wire it into any improvement/ship loop that promotes authored artifacts (prompts, tool docs, knowledge), not just tuning. Pairs with `heldOutGate`.
-
-## Carrier Matters (small models)
-
-Where the knowledge is delivered dominates whether a small model uses it. Measured (crit-create/EOPS, deepseek-v4-flash): the SAME authored fix scores 0.00 as a mounted `resources.files` doc the model never opens, versus 0.625 delivered on the tool/function schema in tools-list (+0.54 over 0.083 baseline; deliberately-wrong content collapses to 0.25, proving content-causality). For small models prefer the tool/mcp schema carrier over `resources.files`; make carrier an explicit choice, and use `neutralizationGate` to prove the authored content — not its mere presence — carried the result.
