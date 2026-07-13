@@ -4,18 +4,18 @@ Use this reference before editing adoption snippets or claiming package truth.
 This table is the single source of version truth for the skill — the prose in
 `SKILL.md` names packages and subpaths, not point versions. Re-run
 `../scripts/check-substrate-versions.sh` before changing anything below
-(last run 2026-07-08).
+(last run 2026-07-12).
 
 | Package | Current npm version | Notes |
 | --- | ---: | --- |
-| `@tangle-network/agent-eval` | `0.108.0` | `/contract` is the frozen public barrel (`defineAgentEval`, `selfImprove`, `runEval`, `runCampaign`, `runImprovementLoop`, `defaultProductionGate`, `heldOutGate`, `analyzeRuns`, storage + `OutcomeStore` + intake adapters). `/campaign` adds the composable internals (`heldoutSignificance`, `pairHoldout`, `powerPreflight`, `neutralizationGate` + `neutralizeText` (footprint-matched placebo gate, new in 0.107.0), the Lineage DAG, `scoreDiscrimination` / `selectDiscriminative`). Root exports the harness × model axis (`CODING_HARNESSES`, `expandProfileAxes`, `runProfileMatrix`, `groupRunsByAgentProfileCell`, `harnessAxisOf`, `HARNESS_NATIVE_MODEL`); `/matrix`, `/multishot`, `/analyst`, `/traces` as documented. Runtime peer range accepts `>=0.101.0 <1.0.0`. |
-| `@tangle-network/agent-runtime` | `0.89.0` | `/loops` exports `defineLeaderboard` (`resolveModel` seam, iteration metadata, generic `TArtifact`), `resolveSandboxClient`, `streamAgentTurn` / `collectAgentTurn`, `leaderboard` + renderers, the `TraceSource` family (`createPushTraceSource`, `sandboxSessionTraceSource`), the loop combinators + `worktreeFanout`. Root exports `resolveAgentBackend` and `improve` (the RSI verb). `/mcp`, `/agent`, `/intelligence`, `/profiles` as documented. |
-| `@tangle-network/agent-interface` | `0.19.0` | The neutral `AgentProfile` contract + capability layer. Runtime peer range is `>=0.14.0 <1.0.0`. `AgentProfile` has NO top-level `harness` field — harness is a run-layer / executor coordinate (see SKILL.md). |
-| `@tangle-network/agent-knowledge` | `1.10.0` | Optional knowledge-write and research primitives. Not a runtime peer dependency — products depend on it directly. |
-| `@tangle-network/agent-profile-materialize` | `0.2.3` | Shared profile-to-workspace materializer. |
-| `@tangle-network/sandbox` | `0.9.7` | Runtime peer range is `>=0.8.0 <1.0.0`. |
+| `@tangle-network/agent-eval` | `0.116.0` | `/contract` owns the stable eval and improvement lifecycle. `/campaign` exports held-out comparison, power checks, neutral-content checks, Lineage, discriminative-case selection, composed prompt/skill/memory/policy proposers, the durable search ledger, and cross-surface interaction analysis. Root exports paired statistics including `pairedSignTest`. Runtime peer range accepts `>=0.114.0 <1.0.0`. |
+| `@tangle-network/agent-runtime` | `0.94.6` | Root exports `improve`, approved-candidate execution, and typed profile diffs. `/loops` owns product runners and trace sources. `/knowledge` exports `runKnowledgeImprovementJob`; memory is a first-class `improve` surface. |
+| `@tangle-network/agent-interface` | `0.25.0` | Neutral `AgentProfile`, `AgentProfileDiff`, changed-axis detection, and capability contracts. Harness remains a run/executor coordinate, not a profile field. |
+| `@tangle-network/agent-knowledge` | `1.12.1` | Knowledge sources, research, RAG and retrieval evaluation, memory adapters, readiness, candidate workspaces, and promotion. Runtime depends on it to compose supervised knowledge jobs. |
+| `@tangle-network/agent-profile-materialize` | `0.3.2` | Shared profile-to-workspace materializer over agent-interface `0.25`. |
+| `@tangle-network/sandbox` | `0.10.4` | Current public sandbox execution package. Runtime peer range is `>=0.8.0 <1.0.0`. |
 | `@tangle-network/tcloud` | `0.4.14` | LLM/router helper package. |
-| `@tangle-network/traces` | `0.8.22` | Local trace SDK/tooling package. |
+| `@tangle-network/traces` | `0.8.27` | Provider adapters and local trace tooling; preserves sibling worktrees, captures Codex custom tools and subagent lifecycle events, and excludes injected control messages from user-reaction signals. |
 
 ## Current Primitive Map
 
@@ -36,9 +36,15 @@ This table is the single source of version truth for the skill — the prose in
 - Use `improve(profile, findings, { surface })` from
   `@tangle-network/agent-runtime` (root) as the one pluggable RSI verb — a
   facade over agent-eval's `selfImprove`. `surface` is
-  `'prompt' | 'skills' | 'tools' | 'mcp' | 'hooks' | 'code'` (default
-  `'prompt'`); `'code'` needs a repo + generator or it fails loud, `'skills'`
-  optimizes a skill DOCUMENT via `ImproveSkillsOptions { document, writeBack }`.
+  `'prompt' | 'skills' | 'tools' | 'mcp' | 'hooks' | 'subagents' | 'workflow' |
+  'agent-profile' | 'memory' | 'code' | 'rollout-policy'` (default `'prompt'`).
+  Prompt, skills, memory, and rollout policy have shared defaults; code needs a
+  repo, and every other surface needs an explicit proposer. Missing wiring
+  fails before a candidate runs.
+- Use `runKnowledgeImprovementJob` from `@tangle-network/agent-runtime/knowledge`
+  for candidate workspace + supervised research/update + readiness + promotion.
+  `agent-knowledge` owns sources, RAG/retrieval, memory adapters, citations, and
+  knowledge quality; products supply the goal, domain evidence, policy, and budget.
 - Use `selfImprove` / `runImprovementLoop` from
   `@tangle-network/agent-eval/contract` for the gated closed loop
   (train/dev optimization → held-out re-score → gate → optional PR).
@@ -78,9 +84,9 @@ This table is the single source of version truth for the skill — the prose in
     session parts.
 - `TANGLE_API_KEY` (`sk-tan-…`) is the one all-products key — it drives the
   sandbox AND the paid router.
-- `compositeProposer` (`src/campaign/proposers/composite.ts`) runs N proposers
-  on one surface with per-member provenance labels, but is NOT yet re-exported
-  from `/campaign` — it is not consumer-reachable until that export lands.
+- `compositeProposer`, `memoryCurationProposer`, `skillOptProposer`,
+  `policyEditProposer`, and the other public proposer constructors are exported
+  from `/campaign`; compose them instead of duplicating proposal orchestration.
 - Do not reference `createFanoutVoteDriver`, `LoopSandboxClient`,
   `runProductionLoop`, `runMultiShotOptimization`, `analyzeOptimizationResult`,
   `createProductionTraceSink`, or `ProductionTraceSink` as current APIs unless
