@@ -110,7 +110,7 @@ for plugin_dir in plugin_dirs:
                 if not line.startswith('description:'):
                     continue
                 raw_description = line.removeprefix('description:').strip()
-                if raw_description in {'>', '>-', '|', '|-'}:
+                if re.fullmatch(r'[>|][0-9+-]*', raw_description):
                     parts = []
                     for next_line in frontmatter_lines[index + 1:]:
                         if next_line and not next_line[0].isspace():
