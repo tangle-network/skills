@@ -1,6 +1,7 @@
 {
   "name": "tangle-branded-designer",
-  "description": "Tangle Network brand design system — colors, typography, layout patterns, component aesthetics, and visual language for building on-brand applications",
+  "version": "1.0.0",
+  "description": "Apply Tangle's brand system to product and marketing UI, then review the rendered result.",
   "author": {
     "name": "Tangle Network",
     "email": "hello@tangle.tools"

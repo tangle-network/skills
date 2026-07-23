@@ -1,6 +1,6 @@
 ---
 name: sandbox-ui-adoption
-description: "Adopt the Tangle design system from @tangle-network/sandbox-ui (0.37.x) + @tangle-network/brand (0.4.x) in a product or generated app. The visual-layer analogue of agent-stack-adoption. Covers the Heading / PageHeader / SectionTitle / PageShell primitives, the role-to-size type scale, the one-h1-per-page rule, DashboardLayout in-app logo wiring, the Tangle Quiet dark theme, and the monorepo version-skew gate. Use when standing up a new product UI, auditing an app for hand-rolled titles, or wiring the brand tokens + tailwind preset."
+description: Adopt sandbox-ui and brand tokens; replace copied UI and verify the rendered product.
 ---
 
 # Sandbox UI Adoption — the Tangle design system

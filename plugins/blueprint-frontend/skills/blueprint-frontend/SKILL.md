@@ -1,6 +1,6 @@
 ---
 name: blueprint-frontend
-description: Use when building frontend applications for Tangle Blueprints — job submission, operator discovery, service provisioning, session auth, or integrating @tangle-network/blueprint-ui.
+description: Build Tangle Blueprint flows for jobs, operators, provisioning, auth, and shared UI.
 ---
 
 # Blueprint Frontend

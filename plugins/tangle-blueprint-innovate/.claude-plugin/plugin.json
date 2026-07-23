@@ -1,6 +1,7 @@
 {
   "name": "tangle-blueprint-innovate",
-  "description": "Idea-to-spec conversation skill for Tangle Blueprints. Research-driven market scan, customer-archetype lock, multi-operator-by-default design, BSM primitive selection, OSS-wrapping patterns, and in-line boringness test. Produces a 1-page spec ready for handoff to tangle-blueprint-expert",
+  "version": "0.1.0",
+  "description": "Turn a Blueprint idea or repo into a researched spec, economics, and build recommendation.",
   "author": {
     "name": "Tangle Network",
     "email": "hello@tangle.tools"

@@ -11,9 +11,9 @@
   },
   "plugins": [
     {
-      "name": "upgrade-agent-fleet",
-      "source": "./plugins/upgrade-agent-fleet",
-      "description": "Upgrade a fleet of Tangle agent products to the current shell standard (adopt @tangle-network/agent-app, delete hand-rolled shell duplication, strip fork-inherited domain residue, contribute generic improvements down to the substrate). Dynamic workflow fanout with adversarial completion gates that make a false 'done' fail; loops per agent until measurable completion criteria pass. Orchestration layer above build-agent-app.",
+     "name": "upgrade-agent-fleet",
+     "source": "./plugins/upgrade-agent-fleet",
+      "description": "Upgrade Tangle agent products to shared packages, remove copied code, and prove each migration.",
       "version": "0.1.0",
       "author": {
         "name": "Tangle Network"
@@ -27,9 +27,9 @@
       ]
     },
     {
-      "name": "tangle-blueprint-expert",
-      "source": "./plugins/tangle-blueprint-expert",
-      "description": "Expert workflow for designing, implementing, testing, and documenting Tangle Blueprints with correct hierarchy, tenancy/auth modeling, and production-like CLI validation",
+     "name": "tangle-blueprint-expert",
+     "source": "./plugins/tangle-blueprint-expert",
+      "description": "Build or review Tangle Blueprints using current protocol, operator, and repository evidence.",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -43,9 +43,9 @@
       ]
     },
     {
-      "name": "tangle-blueprint-innovate",
-      "source": "./plugins/tangle-blueprint-innovate",
-      "description": "Idea-to-spec conversation skill for Tangle Blueprints. Research-driven market scan across GitHub/HN/Product Hunt/arxiv/Twitter, customer-archetype lock, multi-operator-by-default design, BSM primitive selection, OSS-wrapping patterns, and in-line boringness test. Produces a 1-page spec ready for handoff to tangle-blueprint-expert",
+     "name": "tangle-blueprint-innovate",
+     "source": "./plugins/tangle-blueprint-innovate",
+      "description": "Turn a Blueprint idea or repo into a researched spec, economics, and build recommendation.",
       "version": "0.1.0",
       "author": {
         "name": "Tangle Network"
@@ -59,10 +59,10 @@
       ]
     },
     {
-      "name": "sandbox-blueprint",
-      "source": "./plugins/sandbox-blueprint",
-      "description": "Build sandbox-style Tangle Blueprints \u2014 container/VM provisioning, lifecycle management, operator API, session auth, secret provisioning, sidecar integration, tiered GC, and BSM contracts",
-      "version": "1.0.0",
+     "name": "sandbox-blueprint",
+     "source": "./plugins/sandbox-blueprint",
+      "description": "Build a sandbox Blueprint covering isolation, jobs, APIs, auth, secrets, and lifecycle.",
+      "version": "1.1.0",
       "author": {
         "name": "Tangle Network"
       },
@@ -75,10 +75,10 @@
       ]
     },
     {
-      "name": "sandbox-product",
-      "source": "./plugins/sandbox-product",
-      "description": "Build products on the Tangle Sandbox SDK \u2014 direct-connect streaming, token auth, Cloudflare Workers deployment, and edge-first architecture patterns",
-      "version": "1.0.0",
+     "name": "sandbox-product",
+     "source": "./plugins/sandbox-product",
+      "description": "Build on sandbox with sessions, browser streaming, scoped tokens, usage, billing, and edge.",
+      "version": "1.1.0",
       "author": {
         "name": "Tangle Network"
       },
@@ -91,9 +91,9 @@
       ]
     },
     {
-      "name": "blueprint-frontend",
-      "source": "./plugins/blueprint-frontend",
-      "description": "Build React frontends for Tangle Blueprints \u2014 job submission, operator discovery, service provisioning, session auth, Web3 providers, and @tangle-network/blueprint-ui integration",
+     "name": "blueprint-frontend",
+     "source": "./plugins/blueprint-frontend",
+      "description": "Build Tangle Blueprint flows for jobs, operators, provisioning, auth, and shared UI.",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -107,9 +107,25 @@
       ]
     },
     {
-      "name": "tangle-branded-designer",
-      "source": "./plugins/tangle-branded-designer",
-      "description": "Tangle Network brand design system \u2014 colors, typography, layout patterns, component aesthetics, and visual language for building on-brand applications",
+     "name": "tangle-blueprint-iframe-app",
+     "source": "./plugins/tangle-blueprint-iframe-app",
+      "description": "Build embedded Blueprint UIs with wallet messaging, permissions, headers, and browser checks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "blueprint",
+        "frontend",
+        "iframe",
+        "cloudflare",
+        "wallet"
+      ]
+    },
+    {
+     "name": "tangle-branded-designer",
+     "source": "./plugins/tangle-branded-designer",
+      "description": "Apply Tangle's brand system to product and marketing UI, then review the rendered result.",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -123,9 +139,24 @@
       ]
     },
     {
-      "name": "plan-mega-review",
-      "source": "./plugins/plan-mega-review",
-      "description": "Garry Tan's Mega Plan Review Mode \u2014 three review modes (Scope Expansion, Hold Scope, Scope Reduction) with 10 review sections and STOP gates",
+     "name": "site-clone",
+     "source": "./plugins/site-clone",
+      "description": "Migrate a site to Astro, Next.js, or Vite using real DOM, styles, assets, and browser checks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Tangle Network"
+      },
+      "tags": [
+        "website",
+        "migration",
+        "frontend",
+        "visual-verification"
+      ]
+    },
+    {
+     "name": "plan-mega-review",
+     "source": "./plugins/plan-mega-review",
+      "description": "Review a plan by expanding scope, maximizing rigor in scope, or reducing to essentials.",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -138,9 +169,9 @@
       ]
     },
     {
-      "name": "soc2-audit",
-      "source": "./plugins/soc2-audit",
-      "description": "SOC2 security audit \u2014 infrastructure and codebase scanning, Trust Service Criteria mapping, and tiered remediation checklist for compliance readiness",
+     "name": "soc2-audit",
+     "source": "./plugins/soc2-audit",
+      "description": "Audit code and infrastructure against SOC 2 criteria with evidence and ranked remediation.",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -154,10 +185,10 @@
       ]
     },
     {
-      "name": "agent-eval-adoption",
-      "source": "./plugins/agent-eval-adoption",
-      "description": "Adopt @tangle-network/agent-eval + agent-runtime in a product: defineAgent manifest, runLoop loops, MCP delegation, ProductionTraceSink, scorecard + ship-gate CI, held-out promotion, cross-profile matrix, analyst-loop, assertRealBackend.",
-      "version": "1.0.0",
+     "name": "agent-eval-adoption",
+     "source": "./plugins/agent-eval-adoption",
+      "description": "Adopt agent-eval: run the real agent, capture records, calibrate cases, and control promotion.",
+      "version": "1.1.0",
       "author": {
         "name": "Tangle Network"
       },
@@ -169,10 +200,10 @@
       ]
     },
     {
-      "name": "agent-stack-adoption",
-      "source": "./plugins/agent-stack-adoption",
-      "description": "Adopt the self-improving Tangle agent stack (@tangle-network/{agent-runtime,agent-knowledge,agent-eval,sandbox,tcloud}) end-to-end across a 9-phase pipeline.",
-      "version": "1.0.0",
+     "name": "agent-stack-adoption",
+     "source": "./plugins/agent-stack-adoption",
+      "description": "Integrate or audit Tangle runtime, evaluation, knowledge, profiles, and candidate activation.",
+      "version": "1.1.0",
       "author": {
         "name": "Tangle Network"
       },
@@ -185,9 +216,9 @@
       ]
     },
     {
-      "name": "build-agent-app",
-      "source": "./plugins/build-agent-app",
-      "description": "Adopt @tangle-network/agent-app (the agent-product app-shell framework) \u2014 greenfield OR migrate an existing app from any stack. Discovery interview \u2192 module set + path; engine/shell/domain layering rule; per-module seams; sandbox AND browser/edge-copilot wiring; the migration lift-loop; anti-patterns.",
+     "name": "build-agent-app",
+     "source": "./plugins/build-agent-app",
+      "description": "Build or migrate an agent product with agent-app modules, billing, integrations, and evals.",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -202,9 +233,9 @@
       ]
     },
     {
-      "name": "sandbox-ui-adoption",
-      "source": "./plugins/sandbox-ui-adoption",
-      "description": "Adopt the Tangle design system from @tangle-network/sandbox-ui + @tangle-network/brand: Heading / PageHeader / SectionTitle / PageShell primitives, role-to-size type scale, DashboardLayout in-app logo wiring, Tangle Quiet dark theme, and the monorepo version-skew gate.",
+     "name": "sandbox-ui-adoption",
+     "source": "./plugins/sandbox-ui-adoption",
+      "description": "Adopt sandbox-ui and brand tokens; replace copied UI and verify the rendered product.",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"
@@ -218,9 +249,9 @@
       ]
     },
     {
-      "name": "tangle-control-plane",
-      "source": "./plugins/tangle-control-plane",
-      "description": "Connect this agent to your Tangle account over MCP — discover and invoke connected integrations (Gmail, GitHub, Slack, …) and author, run, and observe workflows. Bundles the control-plane MCP server plus a thin skill that teaches the discover→invoke and author→run→observe loops.",
+     "name": "tangle-control-plane",
+     "source": "./plugins/tangle-control-plane",
+      "description": "Use control-plane MCP to discover and call connected tools or run account workflows.",
       "version": "1.0.0",
       "author": {
         "name": "Tangle Network"

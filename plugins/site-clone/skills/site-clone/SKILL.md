@@ -1,6 +1,6 @@
 ---
 name: site-clone
-description: "Clone/migrate a website from any platform (Webflow, WordPress, Squarespace, etc.) to a self-hosted framework (Astro, Next.js, Vite). Produces a pixel-perfect 1:1 reproduction by ripping the actual CSS, fonts, assets, and DOM structure from the live site. Use when the user says 'clone this site', 'migrate from webflow', 'rebuild this site', 'copy this website', 'replicate this site', or any variant of website migration/cloning."
+description: Migrate a site to Astro, Next.js, or Vite using real DOM, styles, assets, and browser checks.
 ---
 
 # Site Clone — Pixel-Perfect Website Migration

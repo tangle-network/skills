@@ -1,6 +1,6 @@
 ---
 name: tangle-blueprint-expert
-description: Expert workflow for designing, implementing, testing, and documenting Tangle Blueprints with correct blueprint/operator/service-instance hierarchy, tenancy/auth modeling, and production-like CLI validation.
+description: Build or review Tangle Blueprints using current protocol, operator, and repository evidence.
 ---
 
 # Tangle Blueprint Expert

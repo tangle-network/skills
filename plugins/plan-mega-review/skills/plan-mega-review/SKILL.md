@@ -1,16 +1,7 @@
 ---
 name: plan-mega-review
 version: 2.0.0
-description: |
-  The most thorough plan review possible. Three modes: SCOPE EXPANSION (dream big,
-  build the cathedral), HOLD SCOPE (review what's here with maximum rigor), and
-  SCOPE REDUCTION (strip to essentials). Context-dependent defaults, but when the
-  user says EXPANSION -- go full send. Challenges premises, maps every failure mode,
-  demands full observability, treats every edge case as a first-class citizen, and
-  calls out specific errors and rescue paths by name. If the standard plan review
-  is a 5, HOLD SCOPE is an 8, and EXPANSION is a 15. Boil the ocean. See around
-  corners. Leave nothing unquestioned.
-  Credit: Garry Tan (https://gist.github.com/garrytan/120bdbbd17e1b3abd5332391d77963e7)
+description: "Review a plan by expanding scope, maximizing rigor in scope, or reducing to essentials."
 allowed-tools:
   - Read
   - Grep

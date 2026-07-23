@@ -1,6 +1,6 @@
 ---
 name: tangle-branded-designer
-description: Tangle Network brand design system — marketing site + product UI. Covers colors, typography, layout, components, and visual language. Use when building, reviewing, or designing any Tangle-branded interface.
+description: Apply Tangle's brand system to product and marketing UI, then review the rendered result.
 ---
 
 # Tangle Branded Designer
