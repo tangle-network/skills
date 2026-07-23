@@ -75,4 +75,11 @@ plugins/
         references/      # supporting docs, code examples
 ```
 
+Before opening a pull request, validate the marketplace, every plugin and
+`SKILL.md`, relative links, line limits, and bundled package checks:
+
+```bash
+./scripts/check-skills.sh
+```
+
 See the [Agent Skills spec](https://agentskills.io/specification) for the SKILL.md format.

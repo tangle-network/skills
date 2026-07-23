@@ -1,6 +1,7 @@
 {
   "name": "sandbox-blueprint",
-  "description": "Build sandbox-style Tangle Blueprints — container/VM provisioning, lifecycle management, operator API, session auth, secret provisioning, sidecar integration, agent-ui frontend, tiered GC, and BSM contracts",
+  "version": "1.1.0",
+  "description": "Build a sandbox Blueprint covering isolation, jobs, APIs, auth, secrets, and lifecycle.",
   "author": {
     "name": "Tangle Network",
     "email": "hello@tangle.tools"

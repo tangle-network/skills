@@ -1,6 +1,6 @@
 ---
 name: soc2-audit
-description: Run a SOC2 security audit against infrastructure and codebase. Scans servers for misconfigurations, reviews code for vulnerabilities, maps findings to Trust Service Criteria, generates tiered remediation checklist. Use when asked to "run soc2 audit", "security audit", "compliance check", "audit this infrastructure", or preparing for Vanta/Drata onboarding.
+description: Audit code and infrastructure against SOC 2 criteria with evidence and ranked remediation.
 ---
 
 # SOC2 Security Audit

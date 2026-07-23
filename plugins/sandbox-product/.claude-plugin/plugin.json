@@ -1,6 +1,7 @@
 {
   "name": "sandbox-product",
-  "description": "Build products on the Tangle Sandbox SDK — direct-connect streaming, token auth, Cloudflare Workers deployment, and edge-first architecture patterns",
+  "version": "1.1.0",
+  "description": "Build on sandbox with sessions, browser streaming, scoped tokens, usage, billing, and edge.",
   "author": {
     "name": "Tangle Network",
     "email": "hello@tangle.tools"

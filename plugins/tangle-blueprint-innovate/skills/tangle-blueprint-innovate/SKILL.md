@@ -1,6 +1,6 @@
 ---
 name: tangle-blueprint-innovate
-description: Idea-to-spec conversation skill for Tangle Blueprints. Takes a category interest, one-line idea, or half-built repo and produces a tight 1-page spec ready for tangle-blueprint-expert. Does market-research sub-agent fanout (GitHub / HN / Product Hunt / arxiv / Twitter), enforces multi-operator-by-default design, maps needs onto existing BSM primitives (never invents adapters), flags when to wrap mature OSS as the capability core, and applies an in-line boringness test to kill ideas that are just SaaS-with-extra-steps.
+description: Turn a Blueprint idea or repo into a researched spec, economics, and build recommendation.
 ---
 
 # Tangle Blueprint Innovate

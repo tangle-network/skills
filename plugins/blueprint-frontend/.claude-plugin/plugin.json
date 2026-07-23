@@ -1,6 +1,7 @@
 {
   "name": "blueprint-frontend",
-  "description": "Build React frontends for Tangle Blueprints — job submission, operator discovery, service provisioning, session auth, Web3 providers, and @tangle-network/blueprint-ui integration",
+  "version": "1.0.0",
+  "description": "Build Tangle Blueprint flows for jobs, operators, provisioning, auth, and shared UI.",
   "author": {
     "name": "Tangle Network",
     "email": "hello@tangle.tools"

@@ -1,6 +1,6 @@
 ---
 name: tangle-control-plane
-description: Use when driving a Tangle account from this agent — invoking connected integrations (Gmail/GitHub/Slack/…) for one-off actions, or authoring, running, and observing Tangle workflows — via the tangle-control-plane MCP server. Covers the discover→invoke and author→run→observe loops, scopes/auth, and the known footguns.
+description: Use control-plane MCP to discover and call connected tools or run account workflows.
 ---
 
 # Tangle Control Plane

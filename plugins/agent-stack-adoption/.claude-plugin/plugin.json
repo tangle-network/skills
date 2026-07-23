@@ -1,6 +1,7 @@
 {
   "name": "agent-stack-adoption",
-  "description": "Adopt the self-improving Tangle agent stack (@tangle-network/{agent-runtime,agent-knowledge,agent-eval,sandbox,tcloud}) in a product — end-to-end 9-phase pipeline: composer to ingestion to production-loop to MCP delegation to researcher to eval scenarios to viewer to matrix to live smoke to CI cron.",
+  "version": "1.1.0",
+  "description": "Integrate or audit Tangle runtime, evaluation, knowledge, profiles, and candidate activation.",
   "author": {
     "name": "Tangle Network",
     "email": "hello@tangle.tools"

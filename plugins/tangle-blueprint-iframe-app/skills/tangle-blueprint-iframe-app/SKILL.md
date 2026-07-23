@@ -1,6 +1,6 @@
 ---
 name: tangle-blueprint-iframe-app
-description: Build hosted Tangle Blueprint product UIs that embed in Tangle Cloud as sandboxed iframe apps. Use when creating or hardening iframe-mode blueprint apps, postMessage wallet bridges, blueprintUi.externalApp manifests, local iframe catalog entries, Cloudflare frame headers, or Tangle Cloud embedded blueprint app verification.
+description: Build embedded Blueprint UIs with wallet messaging, permissions, headers, and browser checks.
 ---
 
 # Tangle Blueprint Iframe App

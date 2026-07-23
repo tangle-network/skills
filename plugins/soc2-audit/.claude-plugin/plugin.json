@@ -1,6 +1,7 @@
 {
   "name": "soc2-audit",
-  "description": "Run SOC 2 readiness audits across infrastructure and codebases: SSH hardening, firewall and Docker exposure, secret permissions, privileged containers, code security checks, Trust Service Criteria mapping, and remediation planning.",
+  "version": "1.0.0",
+  "description": "Audit code and infrastructure against SOC 2 criteria with evidence and ranked remediation.",
   "author": {
     "name": "Tangle Network",
     "email": "hello@tangle.tools"

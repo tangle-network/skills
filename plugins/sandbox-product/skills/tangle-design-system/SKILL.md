@@ -1,6 +1,6 @@
 ---
 name: tangle-design-system
-description: Tangle product UI design tokens and component patterns. Use with sandbox-product when a Sandbox SDK product needs Tangle-branded colors, typography, spacing, radii, effects, cards, buttons, code blocks, and responsive product UI styling.
+description: Apply Tangle design tokens and components to Sandbox product UI and responsive states.
 ---
 
 # Tangle Design System
