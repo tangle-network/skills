@@ -16,6 +16,8 @@ Reconcile existing wiring before creating anything.
 
 2. **Compose one profile.** One function returns the complete `AgentProfile`: prompt, resources, skills, tools, MCP, hooks, subagents, model, permissions, budgets, and identity.
 Production, evaluation, optimization, and materialization consume that function.
+A profile is a recipe that materializes into a sandbox, not a prompt template: skills, knowledge, and any large or static content are `resources.files` mounts that materialization writes as real files, and `prompt.systemPrompt` carries only what the agent must obey without a tool call plus a short index of the mounted resources.
+See `build-with-agent-runtime` for the full materialization contract before adding anything to a system prompt.
 
 3. **Use one execution path.** Instrument and evaluate the exact production call.
 Do not add a direct-router shortcut, fake worker, eval-only profile, or legacy implementation.

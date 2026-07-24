@@ -44,6 +44,7 @@ Do not start from a module inventory or a marketing page.
 1. Use the current official scaffolder when it supports the selected runtime and deployment target.
 2. Install only the package subpaths and peer packages the flow uses.
 3. Define one product-owned profile, taxonomy, handlers, storage boundary, and approval policy.
+Skills, knowledge, and other large or static content are `resources.files` mounts materialized as real files in the sandbox, never bodies concatenated into `prompt.systemPrompt`; the prompt carries only identity, tool contract, and a short index of what's mounted. See `build-with-agent-runtime` for the full materialization contract.
 4. Wire the production agent entrypoint through the app's tool and event path.
 5. Persist final output, run identity, errors, usage, cost, and latency.
 6. Add the smallest real knowledge, integration, billing, and UI pieces required by the flow.
