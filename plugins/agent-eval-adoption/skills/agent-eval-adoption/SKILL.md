@@ -17,6 +17,7 @@ Before writing imports:
 2. Read the installed package README and relevant subpath declarations.
 3. Confirm symbols from the installed type declarations or package source.
 4. Find existing evals, run records, traces, and profile composition.
+When reconciling profile composition, confirm skills and knowledge arrive as `resources.files` mounts, not bodies concatenated into `prompt.systemPrompt` — an eval that scores a profile with an inline-bloated prompt is measuring a materialization bug, not the agent. Full contract: `build-with-agent-runtime`.
 5. Reconcile that wiring before adding anything.
 
 Start with `@tangle-network/agent-eval/contract` for the stable product surface.
