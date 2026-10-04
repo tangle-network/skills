@@ -118,3 +118,11 @@ await insertResults(db, jobId, fusedResults)
 
 This makes the final state exact regardless of how many partial inserts
 happened during unit execution.
+
+## Credential best practices
+
+- Store API keys in secure files with restricted permissions (not env vars
+  inherited by all processes)
+- Scope credentials to the minimum product/service needed for each work unit
+- Verify platform availability before provisioning (health check, not just
+  a reachability ping)
