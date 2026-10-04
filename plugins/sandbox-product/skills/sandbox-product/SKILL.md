@@ -45,6 +45,13 @@ credits, completion state, or access control.
   [server-authoritative-billing.md](references/server-authoritative-billing.md).
 - For Worker/Hono state and deployment patterns, read
   [edge-deployment.md](references/edge-deployment.md).
+- For queue-based orchestration (batch work, multi-arm, no browser streaming),
+  read [queue-orchestration.md](references/queue-orchestration.md).
+- For SDK property names, provider names, encoding, and other integration
+  gotchas that cause silent failures, read
+  [sdk-gotchas.md](references/sdk-gotchas.md).
+- For credential management, platform key scoping, and health checks, read
+  [credentials-and-health.md](references/credentials-and-health.md).
 - Only when the public SDK cannot express a required operation, read
   [direct-api.md](references/direct-api.md).
 
@@ -70,6 +77,13 @@ credits, completion state, or access control.
 - Scope KV/D1/R2 keys by tenant and session.
 - Never debit credits from browser-reported token counts.
 - Do not publish placeholder stream parsers or zero-token fake results.
+- The agent's response is in `result.response`, not `result.text`.
+- Use `openai-compat` as the backend provider name, not `openai`.
+- Model IDs must be router-namespaced (`zai/glm-5.3`, not `glm-5.3`).
+- Never put API keys in environment variables visible to untrusted processes.
+- Check platform health (storage, availability) before provisioning sandboxes.
+- Count retry attempts from your database, not from queue message fields
+  (CF redelivery resets them).
 
 ## Completion evidence
 
