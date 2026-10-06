@@ -89,7 +89,7 @@ Mocks can test adapters but do not replace one real backend run.
 
 ## Then consider
 
-- `eval-agent` when semantic scoring needs a calibrated model judge.
+- `eval-engineering` when semantic scoring needs a calibrated model judge.
 - `build-with-agent-runtime` when wiring execution, delegation, or candidate activation.
 - `build-with-agent-knowledge` when evaluating retrieval, memory, or knowledge candidates.
 - `agent-stack-adoption` when auditing the complete multi-package product path.

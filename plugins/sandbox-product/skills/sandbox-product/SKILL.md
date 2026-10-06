@@ -104,5 +104,3 @@ credits, completion state, or access control.
   Tangle component and token system.
 - Use `sandbox-blueprint` when building the operator infrastructure that
   provisions the sandboxes rather than consuming the public SDK.
-- Use `sandbox-sdk-integration` when reviewing replay/idempotency behavior in an
-  existing integration instead of building a complete product.
