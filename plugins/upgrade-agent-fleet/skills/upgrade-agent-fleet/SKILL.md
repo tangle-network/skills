@@ -90,4 +90,4 @@ Include incomplete repositories and unchecked dependencies.
 - `build-agent-app` for product-shell migrations.
 - `agent-stack-adoption` for runtime, eval, profile, and knowledge boundaries.
 - `substrate-release` when a shared package change must ship before consumers update.
-- `review-to-green` for a branch with unresolved review or CI findings.
+- `converge` for a branch with unresolved review or CI findings.

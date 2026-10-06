@@ -60,5 +60,5 @@ Any omission means partial adoption.
 - `agent-eval-adoption` when implementing evaluation and comparison details.
 - `build-with-agent-runtime` when implementing execution or candidate activation.
 - `build-with-agent-knowledge` when implementing retrieval, memory, or knowledge improvement.
-- `eval-agent` when semantic scoring needs a model judge.
+- `eval-engineering` when semantic scoring needs a model judge.
 - `verify` before declaring adoption complete.
