@@ -9,6 +9,8 @@ Use this skill when a blueprint needs a product-specific hosted UI inside Tangle
 
 Do not use it for generic job-form frontends; use `blueprint-frontend` for that. Use this when the app is a hosted product surface with its own route, state model, styling, and parent-bridged wallet/job interactions.
 
+For Tangle-branded surfaces, read [Tangle Branded Designer](https://github.com/tangle-network/skills/blob/main/plugins/tangle-branded-designer/skills/tangle-branded-designer/SKILL.md) before choosing visual direction. Preserve the blueprint-specific UI and bridge ownership below.
+
 ## Read As Needed
 
 1. `references/IFRAME-APP-WORKFLOW.md` - implementation workflow, app shell, local dev, deploy, verification.

@@ -1,19 +1,18 @@
 # Tangle Branded Designer
 
-Encodes the complete Tangle Network visual identity, design system, and aesthetic language for building on-brand applications.
+Applies the maintained Tangle Brand system to product and marketing work, then reviews the rendered result.
 
 ## What It Does
 
-Provides authoritative design direction for any Tangle-branded application:
+The [Brand design bible](https://github.com/tangle-network/brand/blob/main/docs/design-bible.md) owns shared design policy. This plugin supplies the workflow for consuming it:
 
-- Exact color palette with semantic token hierarchy
-- Typography system (Inter + JetBrains Mono)
-- Component patterns, spacing scale, border radius conventions
-- Dark/light theme architecture with CSS variable layering
-- Gradient language, glow effects, glass treatments
-- Animation timing and easing curves
-- Layout philosophy and responsive breakpoints
-- Brand voice translated into visual decisions
+- Read current policy, implementation owners and installed APIs
+- Capture the existing flow before changing it
+- Reuse maintained components and starter compositions
+- Preserve product behavior and supported themes
+- Verify the real flow and obtain independent craft critique
+
+Token values, typography and motion remain in their shared owners; this plugin does not publish a separate recipe.
 
 ## Usage
 

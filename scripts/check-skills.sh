@@ -51,6 +51,14 @@ for name in sorted(set(entry_by_name) - plugin_names):
 
 frontmatter_re = re.compile(r'^---\n(.*?)\n---\n', re.DOTALL)
 link_re = re.compile(r'\[[^\]]+\]\(([^)]+)\)')
+designer_workflow = 'https://github.com/tangle-network/skills/blob/main/plugins/tangle-branded-designer/skills/tangle-branded-designer/SKILL.md'
+design_routes = {
+    'tangle-design-system': designer_workflow,
+    'build-agent-app': designer_workflow,
+    'blueprint-frontend': designer_workflow,
+    'tangle-blueprint-iframe-app': designer_workflow,
+    'sandbox-product': '../tangle-design-system/SKILL.md',
+}
 
 for plugin_dir in plugin_dirs:
     manifest_path = plugin_dir / '.claude-plugin' / 'plugin.json'
@@ -90,6 +98,14 @@ for plugin_dir in plugin_dirs:
     for skill_dir in skill_dirs:
         skill_md = skill_dir / 'SKILL.md'
         content = skill_md.read_text(errors='replace').replace('\r\n', '\n')
+        if skill_dir.name in {'tangle-branded-designer', 'sandbox-ui-adoption', 'tangle-design-system'}:
+            # Check the reading route, not semantic compliance with design policy.
+            owner = 'https://github.com/tangle-network/brand/blob/main/docs/design-bible.md'
+            if owner not in link_re.findall(content):
+                errors.append(f'{skill_md}: must link the canonical Brand design bible')
+        route = design_routes.get(skill_dir.name)
+        if route and route not in link_re.findall(content):
+            errors.append(f'{skill_md}: missing design workflow link {route}')
         line_count = len(content.splitlines())
         byte_count = len(content.encode())
         if line_count >= 500:

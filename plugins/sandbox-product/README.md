@@ -17,6 +17,8 @@ Build products and SaaS applications on the Tangle Sandbox SDK with edge-first a
 
 ## Related Skills
 
+- `tangle-design-system` — Bundled compatibility entrypoint for Tangle-branded UI; reads the current Brand authority and shared design workflow before visual implementation
+- `sandbox-ui-adoption` — Shared-component adoption and rendered-flow verification
 - `sandbox-sdk` — Internal SDK ecosystem (sidecar, providers, SSE primitives)
 - `sandbox-blueprint` — Infrastructure blueprint (operator API, on-chain jobs)
 - `blueprint-frontend` — Blueprint frontend (job submission, operator discovery)

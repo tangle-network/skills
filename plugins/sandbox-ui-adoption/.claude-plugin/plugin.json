@@ -1,6 +1,6 @@
 {
   "name": "sandbox-ui-adoption",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Adopt sandbox-ui and brand tokens; replace copied UI and verify the rendered product.",
   "author": {
     "name": "Tangle Network",
