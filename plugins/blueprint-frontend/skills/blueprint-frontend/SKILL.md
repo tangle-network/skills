@@ -9,6 +9,8 @@ Use this skill when building React frontends for Tangle Network blueprints. Cove
 
 For sandbox-specific frontend patterns (agent chat, terminal, sidecar auth), see `sandbox-blueprint`.
 
+For Tangle-branded pages, read [Tangle Branded Designer](https://github.com/tangle-network/skills/blob/main/plugins/tangle-branded-designer/skills/tangle-branded-designer/SKILL.md) before choosing visual direction. Keep blueprint-specific controls and theme adapters with their installed `blueprint-ui` owner; the examples below do not establish a separate Tangle brand policy.
+
 ## What This Skill Covers
 
 - Registering blueprints and defining job metadata for UI rendering

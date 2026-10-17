@@ -1,6 +1,6 @@
 {
   "name": "blueprint-frontend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Build Tangle Blueprint flows for jobs, operators, provisioning, auth, and shared UI.",
   "author": {
     "name": "Tangle Network",

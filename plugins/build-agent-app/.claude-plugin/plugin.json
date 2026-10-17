@@ -1,6 +1,6 @@
 {
   "name": "build-agent-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Build or migrate an agent product with agent-app modules, billing, integrations, and evals.",
   "author": {
     "name": "Tangle Network",

@@ -9,6 +9,8 @@ Use the public Sandbox SDK as the product boundary. Keep write/control requests
 short and let the browser connect directly to the session gateway for long-lived
 read events.
 
+For Tangle-branded UI, read the bundled [tangle-design-system entrypoint](../tangle-design-system/SKILL.md) before choosing the visual direction or implementing the screen. It routes to the current Brand owner and shared composition workflow.
+
 ## Architecture
 
 ```text
@@ -100,7 +102,7 @@ credits, completion state, or access control.
 
 ## Then consider
 
-- Use `sandbox-ui-adoption` after the transport works when adopting the current
+- Use `sandbox-ui-adoption` when adopting the current
   Tangle component and token system.
 - Use `sandbox-blueprint` when building the operator infrastructure that
   provisions the sandboxes rather than consuming the public SDK.

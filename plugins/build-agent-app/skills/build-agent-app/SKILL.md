@@ -9,6 +9,8 @@ Use this when building the product shell around an agent: chat, tools, approvals
 Read the installed `@tangle-network/agent-app` README, exports, types, current scaffolder, and nearest maintained product before choosing modules.
 Do not copy API names from this skill.
 
+For Tangle-branded products, read [Tangle Branded Designer](https://github.com/tangle-network/skills/blob/main/plugins/tangle-branded-designer/skills/tangle-branded-designer/SKILL.md) before selecting the UI direction and [Sandbox UI Adoption](https://github.com/tangle-network/skills/blob/main/plugins/sandbox-ui-adoption/skills/sandbox-ui-adoption/SKILL.md) before composing or migrating the screen. These workflows route to Brand policy and the current shared owners; they do not replace the product flow below.
+
 ## Confirm The Boundary
 
 | Concern | Owner |

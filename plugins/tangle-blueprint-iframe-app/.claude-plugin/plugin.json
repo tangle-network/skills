@@ -1,6 +1,6 @@
 {
   "name": "tangle-blueprint-iframe-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Build embedded Blueprint UIs with wallet messaging, permissions, headers, and browser checks.",
   "author": {
     "name": "Tangle Network",

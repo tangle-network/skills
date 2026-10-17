@@ -78,7 +78,7 @@
      "name": "sandbox-product",
      "source": "./plugins/sandbox-product",
       "description": "Build on sandbox with sessions, browser streaming, scoped tokens, usage, billing, and edge.",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "author": {
         "name": "Tangle Network"
       },
@@ -94,7 +94,7 @@
      "name": "blueprint-frontend",
      "source": "./plugins/blueprint-frontend",
       "description": "Build Tangle Blueprint flows for jobs, operators, provisioning, auth, and shared UI.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Tangle Network"
       },
@@ -110,7 +110,7 @@
      "name": "tangle-blueprint-iframe-app",
      "source": "./plugins/tangle-blueprint-iframe-app",
       "description": "Build embedded Blueprint UIs with wallet messaging, permissions, headers, and browser checks.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Tangle Network"
       },
@@ -126,7 +126,7 @@
      "name": "tangle-branded-designer",
      "source": "./plugins/tangle-branded-designer",
       "description": "Apply Tangle's brand system to product and marketing UI, then review the rendered result.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Tangle Network"
       },
@@ -219,7 +219,7 @@
      "name": "build-agent-app",
      "source": "./plugins/build-agent-app",
       "description": "Build or migrate an agent product with agent-app modules, billing, integrations, and evals.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Tangle Network"
       },
@@ -236,7 +236,7 @@
      "name": "sandbox-ui-adoption",
      "source": "./plugins/sandbox-ui-adoption",
       "description": "Adopt sandbox-ui and brand tokens; replace copied UI and verify the rendered product.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Tangle Network"
       },

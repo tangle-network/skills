@@ -5,341 +5,40 @@ description: Apply Tangle's brand system to product and marketing UI, then revie
 
 # Tangle Branded Designer
 
-You are the lead designer for Tangle Network. Every visual decision must express the brand: technically sophisticated, AI-native, developer-first, and unmistakably premium.
-
-**Brand positioning**: The operating layer for AI services. We sit between the raw technical credibility of terminal UIs and the polish of Vercel/Linear. Closer to Linear than to MetaMask.
-
----
-
-## 1. Two Design Contexts
-
-Tangle has two distinct visual contexts that share DNA but differ in execution:
-
-| | Marketing Site (tangle.tools) | Product UI (ai.tangle.tools, apps) |
-|---|---|---|
-| **Font** | Satoshi Variable (800/700/600/500) | Inter (400/500/700) |
-| **Mono** | Space Mono | JetBrains Mono |
-| **Background** | #000000 (pure black — NOT #1f1d2b) | hsl(0,0%,9%) (neutral near-black) |
-| **Accent** | #4a3aff / #6172f3 (blue-indigo) | #A855F7 / #8B5CF6 (purple) |
-| **Buttons** | Pill (48px radius, 20px 38px pad) | Rounded-md (6px radius) |
-| **Cards** | 2rem radius, 2px borders | rounded-lg (8px), 1px borders |
-| **Sections** | Full-width with 1.5% margins, 16px corner radius | Standard containers |
-| **Animations** | p5.js grid reveal, marquee scroll, GSAP | Fade/zoom micro-interactions |
-
-Always identify which context you're in before making design decisions.
-
----
-
-## 2. Marketing Site Design System (tangle.tools)
-
-### 2.1 CSS Custom Properties (from Webflow)
-
-```css
---body: #1f1d2b;
---primary: #605dba;
---secondary: #aab0bc;
---white: white;
---dark: #343f52;
---untitled-ui--indigo500: #6172f3;
---untitled-ui-primary600: #7f56d9;
---untitled-ui-primary700: #6941c6;
---flowui-component-library--primary-base: #642eff;
---elements-webflow-library-accent--primary-1: #4a3aff;
---spark-library-foreground-interactive: #5532fa;
---flowui-component-library-gray-500: #6b7094;
-```
-
-### 2.2 Font: Satoshi Variable
-
-Primary font for all marketing text. NOT Inter, NOT Space Grotesk.
-
-```css
-font-family: "Satoshi", Arial, sans-serif;
--webkit-font-smoothing: antialiased;
--moz-osx-font-smoothing: grayscale;
-```
-
-| Element | Size | Weight | Line-height | Letter-spacing |
-|---------|------|--------|-------------|----------------|
-| H1 (hero) | 4.5rem (72px) | 800 | 120% | 0.01em |
-| H3 (section) | 3.5rem (56px) desktop, 2.25rem tablet | 700 | 120% | 0 |
-| H4 | 2.5rem (40px) desktop, 2rem tablet | 700-800 | 120% | 0 |
-| Body-01 (hero sub) | 1.4rem (22.4px) | 700 | 150% | normal |
-| Body-02 (section sub) | 1.25rem desktop, 1rem tablet | 600 | 150% | normal |
-| Nav links | 1.15rem | 500 | 1 | -0.02em |
-| Buttons | 18px | 600-700 | 20px | — |
-| Labels/muted | 0.85-1rem | 500-700 | — | 0.08em (uppercase) |
-
-### 2.3 Navigation
-
-```css
-.nav {
-  position: absolute;        /* Overlays hero, not fixed */
-  padding: 5% 5% 0;
-  display: flex;
-  z-index: 100;
-}
-
-.nav-menu {
-  backdrop-filter: blur(3px);
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 200px;       /* Pill shape */
-  padding: 6px 6px 6px 28px;
-  gap: 28px;
-}
-
-.nav-cta {
-  background: white;
-  color: #1d1d1d;
-  border-radius: 50px;
-  padding: 12px 24px;
-  font-weight: 700;
-}
-```
-
-### 2.4 Hero Pattern
-
-Every page hero follows this structure:
-- Height: 95vh, content at bottom-left via flex-end
-- Content container: 60% width on desktop, left-aligned
-- Video or image background: position absolute, z-index -1, opacity 0.5
-- Hero wrapper: margin 0 1.5%, border-radius 0 0 16px 16px, overflow hidden
-- "Pill badge" label: border-radius 62.5rem, gradient text (`linear-gradient(rgba(255,255,255,0.6), #fff)` with `-webkit-background-clip: text`)
-
-### 2.5 Section Wrapper
-
-The core section container used across all pages:
-
-```css
-.section-wrapper {
-  background-color: rgba(0, 0, 0, 0);   /* TRANSPARENT — page bg shows through */
-  background-image: radial-gradient(circle, rgba(0,0,0,0), rgba(130,99,255,0.1) 0%, rgba(130,99,255,0.2) 90%);
-  border: 1px solid rgb(33, 26, 65);     /* #211a41 */
-  border-radius: 16px;
-  margin-top: 2rem;
-  padding: 5vw 3% 10vw;
-  overflow: hidden;
-  position: relative;                     /* For p5.js canvas */
-}
-```
-
-**Critical**: background-color is TRANSPARENT. The dark look comes from the page background (#000000 pure black) showing through. The CSS variable `--body: #1f1d2b` is misleading — the live site overrides body bg to pure black. Adding any non-black solid color makes sections look washed out.
+Use this entrypoint for Tangle product and marketing design. Brand owns the design decisions; this skill owns the workflow for applying them.
 
-### 2.6 Buttons
-
-| Variant | Background | Text | Border | Radius | Padding |
-|---------|-----------|------|--------|--------|---------|
-| Secondary (white) | #fff | #211f54 | 1px solid #eff0f6 | 48px | 20px 38px |
-| Primary (dark purple) | #1e116e | white | none | 48px | 20px 38px |
-| Primary-white | white | #211f54 | none | 48px | 20px 38px |
-| Deploy/action | #4a3aff | white | none | 12px | 12px 20px |
-
-All buttons: font-family Satoshi, font-size 18px, font-weight 600-700, transition 0.3s.
-
-### 2.7 Cards
+## Read the current owners
 
-**Builder/Feature cards:**
-```css
-border: 2px solid #2a2b39;
-border-radius: 2rem;
-background: transparent;
-```
-
-**Blueprint cards:**
-```css
-border-radius: 1.5rem;
-min-height: 260px;
-width: calc(33.333% - 0.75rem);
-background-color: rgba(15, 13, 30, 0.9);
-border: 1px solid rgba(255, 255, 255, 0.06);
-```
-Background images at 0.7 opacity, gradient overlay on text area for readability.
-
-### 2.8 CTA Card
-
-```css
-background-color: #4a3aff;
-border-radius: 2rem;
-padding: 72px 54px;
-position: relative;
-overflow: hidden;
-margin: 2rem 1.5%;
-```
-
-Includes SVG pattern decorations (pattern-cta-v1, pattern-cta-v2) positioned absolute at corners, opacity 0.3.
-
-### 2.9 Footer
+1. Read the [Brand design bible](https://github.com/tangle-network/brand/blob/main/docs/design-bible.md) for identity, copy, visual grammar, interaction, motion and acceptance.
+2. Follow its [implementation contracts](https://github.com/tangle-network/brand/blob/main/docs/brand-guidelines.md) for themes, semantic tokens and shared component ownership.
+3. For product UI, read the [UI ownership and composition guide](https://github.com/tangle-network/sandbox-ui/blob/main/UI-DIRECTION.md) and the relevant [product surface](https://github.com/tangle-network/agent-app/blob/main/docs/product-surfaces.md). Confirm APIs against the installed package's exports and types.
 
-```css
-background-color: #00010a;                  /* Near-black, NOT page bg */
-background-image: url("texture.png");       /* Subtle dot texture */
-background-position: 50%;
-background-size: cover;
-padding: 2rem 5%;
-```
+Use product-surface guidance for domain composition, not as an independent token or motion authority. In particular, do not adopt its branch-era motion table or animation-end completion assumption; follow [Brand's explicit conflict resolutions](https://github.com/tangle-network/brand/blob/main/docs/design-rule-reconciliation.md#eight-inventory-conflicts) and verify the installed implementation.
 
-Grid: `4fr 1fr` desktop, `1fr` mobile. Links with external arrow icons. Social icons at 24px, color #6b7094 → white on hover.
+Use a verified local checkout of these sources when available; record its revision. If remote sources are unavailable, use the project's pinned or already-reviewed local guidance and existing components. Report missing authority and defer new brand decisions rather than inventing a replacement palette or blocking unrelated source inspection.
 
-### 2.10 Marquee Banner
+Do not copy token values, font scales or motion recipes into this skill or a product stylesheet. Historical screenshots and older skill copies are evidence, not a competing source of current policy. Product-specific composition and recovery still belong to the product.
 
-```css
-background-color: #4a3aff;
-height: 40px;
-overflow: hidden;
-```
+## Start with the work
 
-Text: uppercase, Satoshi 600, 0.875rem, white. Animation: `translateX(-50%) → translateX(0%)`, 40s linear infinite. Content duplicated for seamless loop.
+Identify the audience, task, useful artifact, next decision and supported states before drawing the screen. Read the unresolved product complaints and inspect the closest maintained product or reference the user approved.
 
-### 2.11 p5.js Grid Reveal Animation
+For an existing surface, capture the real flow's desktop and phone baseline before editing, including the relevant states. Record the route, source revision and fixture so the after evidence is comparable. For a new surface, identify the maintained reference and mark the absence of a prior consumer baseline.
 
-Canvas positioned absolute behind section content. Draws randomly appearing grid squares (40px cells) that fade out. Parameters:
-- CELL_SIZE: 40px
-- MAX_CELLS: 150
-- REVEAL_INTERVAL: 1000ms
-- Stroke: white at 1% opacity, Fill: white at 0.5% opacity
-- Applied to: hero, section_wrapper_1, section_wrapper_2
+For a new agent product, inspect the current [maintained starter](https://github.com/tangle-network/agent-app/blob/main/create-agent-app/README.md) and [default workspace](https://github.com/tangle-network/agent-app/blob/main/examples/default-workspace.md). Start from the supported shared composition; do not rebuild its shell, composer, pickers or primitives.
 
-### 2.12 Logo
+For a major redesign, follow the bible's direction-comparison and approval requirements using the same real task and content. Small corrections keep the established direction. An available product-design skill can supply inspection and prototyping methods; it does not override Brand.
 
-The Tangle knot SVG uses a linear gradient:
-- Start: #8E59FF
-- End: #6888F9
-- Two overlapping paths at different opacities (1.0 and 0.8)
+## Implement at the owner
 
----
+Map each changed control and state to its existing shared component. Fix reusable behavior in its owning package, then adopt the verified release in consumers. Preserve product routes, permissions, data, named themes and domain meaning. Make unsupported capabilities absent or explicitly unavailable, never decorative controls with no real action.
 
-## 3. Product UI Design System (ai.tangle.tools, apps)
+Use real product output for proof. Keep illustrative concepts clearly identified. Marketing, operational work and long reading need compositions suited to their jobs; do not force one hero, card grid or page wrapper onto every surface.
 
-### 3.1 Color System
+## Prove the result
 
-**Primary palette** anchors on purple-to-indigo:
+Exercise the real changed flow at desktop and phone widths, in supported themes, with keyboard and relevant reduced-motion behavior. Include meaningful pending, empty, error and recovery states. For an artifact flow, open, use and reopen the actual result; a chat claim or filename is not proof of saved content.
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `accent.500` | `#A855F7` | Primary actions, active states, focus rings |
-| `accent.600` | `#9333EA` | Active border (light theme) |
-| `accent.700` | `#7C3AED` | Sidebar button text (light theme) |
-| Brand indigo | `#667eea` | Hero gradient start, code block top-border |
-| Brand violet | `#764ba2` | Hero gradient end, code block top-border |
+Inspect screenshots for static changes and interaction recordings for changed behavior. Follow the [Brand evidence contract](https://github.com/tangle-network/brand/blob/main/docs/design-evidence-contract.md): functional assertions, independent craft review and target-user results remain separate. A build, Storybook catalog or drift pass cannot establish exceptional UX.
 
-**Neutrals** — true grays, no chroma:
-
-| Token | Light | Dark |
-|-------|-------|------|
-| `bg-depth-1` | white | gray.900 |
-| `bg-depth-2` | gray.50 | gray.800 |
-| `bg-depth-3` | gray.200 | gray.700 |
-| `textPrimary` | gray.950 | white |
-| `textSecondary` | gray.600 | gray.400 |
-| `borderColor` | alpha.gray.10 | alpha.white.10 |
-
-**Alpha system**: Every base color has a full alpha ramp. Buttons use `alpha.accent.10` bg, `alpha.accent.20` hover. Borders use `alpha.gray.10`. Never use opaque colored backgrounds for interactive states.
-
-### 3.2 Typography
-
-| Role | Family | Weights |
-|------|--------|---------|
-| UI text | Inter | 300, 400, 500, 700 |
-| Code | JetBrains Mono | 400, 500 |
-
-| Context | Size | Weight | Letter-spacing |
-|---------|------|--------|----------------|
-| Hero title | 2xl → 5xl responsive | 700 | default |
-| Section h1 | 1.75em | 700 | -0.02em |
-| Section h2 | 1.5em | 700 | -0.02em |
-| Body | 15px | 400 | 0.005em |
-| Code | 13px | 400-500 | default |
-
-H1 gradient text: `linear-gradient(135deg, #667eea, #764ba2)` with `-webkit-background-clip: text`.
-
-### 3.3 Border Radius Scale
-
-| Context | Radius |
-|---------|--------|
-| Buttons, inputs | 6px (rounded-md) |
-| Cards, code blocks | 8px (rounded-lg) |
-| Dropdowns, dialogs | 16px (rounded-2xl) |
-| Badges, pills | 9999px (rounded-full) |
-| Inline code | 4px (rounded-sm) |
-
-No rounded-xl (12px). The jump from 8px→16px is intentional hierarchy.
-
-### 3.4 Animation
-
-Easing: `cubic-bezier(0.4, 0, 0.2, 1)` (deceleration). No bouncing.
-
-| Speed | Duration | Usage |
-|-------|----------|-------|
-| Instant | 100ms | Color, opacity |
-| Quick | 150-200ms | Hover, tooltips |
-| Normal | 300ms | Sheet close, dropdown |
-| Slow | 500ms | Sheet open, page transition |
-
-### 3.5 Component Patterns
-
-**Buttons**: 5 variants (Default/Secondary/Outline/Ghost/Destructive). font-medium, shadow-xs, rounded-md, gap-2.
-
-**Cards**: rounded-lg, border, bg-card, shadow-sm. Hierarchy from depth tokens, not shadows.
-
-**Inline code**: 4px radius, gradient background (`rgba(99,102,241,0.1)` to `rgba(139,92,246,0.1)`), 1px purple border.
-
-**Dark mode**: Not inverted light mode. Background hsl(0,0%,9%), sidebar hsl(240,6%,6%). Purple accent stays at 500 (doesn't shift).
-
----
-
-## 4. Shared Brand Elements
-
-These apply across both contexts:
-
-1. **Purple is computation, intelligence, protocol** — used for accents, not decoration
-2. **Depth over elevation** — layered backgrounds, not drop shadows
-3. **Precision** — tight spacing, consistent radii, aligned grids
-4. **No warm grays, no blue-grays** — true neutral grays only
-5. **Gradients are 2-stop only** — simplicity is the point
-6. **Alpha colors for interactive states** — never opaque colored backgrounds
-7. **Logo gradient**: #8E59FF → #6888F9
-
----
-
-## 5. Artifact-First Product Storytelling
-
-Use this gate for marketing sections, product pages, launch pages, and app screenshots. The reader should understand the product mechanic from the visual before they read the body copy.
-
-| Rule | Check |
-|------|-------|
-| Product artifact first | Show the actual surface: screenshot, terminal output, trace timeline, run ledger, workflow graph, code pane, real logo row, or generated image. A gradient panel or generic dashboard card does not count. |
-| One job per section | If the hero and the next section make the same claim, delete or rewrite one. No repeated product thesis. |
-| Real brands | Use real SVG/logo assets or approved wordmarks. Text-only logo boxes are a fallback, not the design. |
-| Complete grids | Avoid orphan cards. Use 4, 6, 8, or 12 items, or make one item intentionally span. A lone final card is a layout failure. |
-| No taxonomy tails | Do not put repeated chip rows under every card. If metadata matters, integrate it into the artifact preview. |
-| No vanity counters | Badges like "10 variants", "40 renders", or "8 loops" need provenance. Without a real source, remove them. |
-| Labels earn space | Delete labels that restate the title, selected brand, route, icon, or state already visible nearby. |
-| Purple is brand, green is state | Green means healthy, passed, paid, live, or safe. It is not a general brand accent. |
-| Code is a product surface | Marketing code must be readable at 14-16px, syntax-highlighted, fixed-height, and one-to-one across SDK and CLI examples. No wobble when tabs switch. |
-| CTAs route real work | Provision, create, inspect, and connect buttons should open the actual flow or preserve return paths through auth. No fake readiness states. |
-| Screenshot gate | Verify desktop and mobile screenshots. Check loaded images, logo correctness, contrast, dead space, card nesting, orphan cards, and tiny type before claiming quality. |
-
----
-
-## 6. Anti-Patterns
-
-| Never | Why |
-|-------|-----|
-| Opaque colored button backgrounds | Use alpha. Opaque doesn't compose across depths. |
-| Bouncy/spring animations | Brand is deceleration curves, not physics. |
-| Heavy drop shadows for hierarchy | Use depth tokens. Shadows for floating surfaces only. |
-| Warm gray / blue-gray neutrals | True grays. No personality in neutrals. |
-| More than 2 gradient stops | Brand gradient is always 2-stop. |
-| Frosted glass (heavy blur) | Light blur only (4px). Heavy blur is a different brand. |
-| Space Grotesk on marketing site | Use Satoshi. Space Grotesk is for the blog only. |
-| Solid background on section wrappers | Must be transparent with radial-gradient overlay. |
-| Centered hero text | Marketing heroes are LEFT-ALIGNED, 60% width, bottom-aligned. |
-| Gradient blocks pretending to be images | If the section promises images, screenshots, or generated outputs, render real media. |
-| Card inside card inside card | It reads as generated filler and wastes space. Use one container level. |
-| Hero copy repeated in the next section | Repetition makes the page feel unplanned. Give each section a different job. |
-| Green as general accent color | Tangle's brand accent is purple. Reserve green for status and risk state. |
-| Orphan card grids | A lone last card makes the layout look accidental. Change the count or span intentionally. |
-| Bottom chip rows on every card | Repeated tags weaken the card and add visual noise. |
-| Count badges without provenance | Fake precision damages trust faster than no number. |
-| Labels that repeat adjacent text | Delete labels like selected brand, route, or state when the component already says it. |
-| Tiny code and button text | Product proof must be legible in screenshots and on mobile. |
+Report source and installed versions, the decision, changed owners, rendered evidence, tested states and unresolved limits. Verify the served revision and live flow when deployment is in scope; keep unrun proof explicit.
